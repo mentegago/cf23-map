@@ -3,7 +3,7 @@ import json
 import urllib.request
 from pathlib import Path
 
-URL = "https://cf22-config.nnt.gg/data/creator-data.json"
+URL = "https://cf23-config.nnt.gg/data/creator-data.json"
 OUTPUT = Path(__file__).parent.parent / "data" / "creator-data-initial.json"
 
 def main():

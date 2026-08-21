@@ -611,7 +611,7 @@ class _CreatorListViewState extends State<CreatorListView> {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Text(
-          isCreatorCustomListMode ? 'Custom Creators List' : 'All Comifuro 22 Creators',
+          isCreatorCustomListMode ? 'Custom Creators List' : 'All Comifuro 23 Creators',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,

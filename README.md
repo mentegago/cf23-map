@@ -1,10 +1,10 @@
-# CF22 Booth Map
+# CF23 Booth Map
 
-Aplikasi web untuk melihat peta booth creator di acara Comifuro 22 (CF22).
+Aplikasi web untuk melihat peta booth creator di acara Comifuro 23 (CF23).
 
 ## Fitur
 
-- 🗺️ **Peta Interaktif** - Lihat seluruh layout booth acara CF22
+- 🗺️ **Peta Interaktif** - Lihat seluruh layout booth acara CF23
 - 🔍 **Pencarian Creator** - Cari dan temukan booth creator favorit kamu
 - 🔗 **Share Link** - Bagikan link langsung ke booth creator tertentu
 
@@ -38,5 +38,5 @@ App ini merupakan app eksperimentasi saya, artinya saya bakal ngutak-ngatik teru
 
 ---
 
-See you at CF22 💖
+See you at CF23 💖
 

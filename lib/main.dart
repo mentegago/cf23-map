@@ -39,7 +39,7 @@ class CFMapApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'CF22 Booth Map',
+        title: 'CF23 Booth Map',
         theme: ThemeData(
           colorScheme: const ColorScheme(
             brightness: Brightness.light,

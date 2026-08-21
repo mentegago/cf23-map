@@ -15,7 +15,7 @@ void main() {
     await tester.pumpWidget(CFMapApp(creatorDataProvider: creatorDataProvider, favoritesService: favoritesService, settingsProvider: settingsProvider));
 
     // Verify that the app title is shown
-    expect(find.text('CF22 Booth Map'), findsOneWidget);
+    expect(find.text('CF23 Booth Map'), findsOneWidget);
   });
 }
 
