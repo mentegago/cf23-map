@@ -29,6 +29,7 @@ class CreatorListView extends StatefulWidget {
   final VoidCallback? onClearSearch;
   final Function(String)? onSearchQueryChanged;
   final bool showFandomSuggestions;
+  final ScrollPhysics? scrollPhysics;
 
   const CreatorListView({
     super.key,
@@ -41,6 +42,7 @@ class CreatorListView extends StatefulWidget {
     this.onClearSearch,
     this.onSearchQueryChanged,
     this.showFandomSuggestions = true,
+    this.scrollPhysics,
   });
 
   @override
@@ -403,6 +405,7 @@ class _CreatorListViewState extends State<CreatorListView> {
 
     return ListView.builder(
       controller: widget.scrollController,
+      physics: widget.scrollPhysics,
       itemCount: itemCount,
       itemBuilder: (context, index) {
         // Fandom suggestions section (first if present)
@@ -532,6 +535,7 @@ class _CreatorListViewState extends State<CreatorListView> {
 
     return ListView.builder(
       controller: widget.scrollController,
+      physics: widget.scrollPhysics,
       itemCount: itemCount,
       itemBuilder: (context, index) {
         return _buildItemAtIndex(

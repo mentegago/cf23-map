@@ -38,30 +38,51 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   ScrollController? _activeScrollController;
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
-  MobileSheetDetent _detent = MobileSheetDetent.collapsed;
-  double _extent = MobileSheetDetent.collapsed.extent;
+  MobileSearchSheetDetent _detent = MobileSearchSheetDetent.collapsed;
+  double _collapsedExtent = 0.18;
+  double _extent = 0.18;
+  double _bottomSafeArea = MobileSearchSheetLayout.minimumBottomSafeArea;
   double? _dragStartExtent;
 
-  MobileSheetDetent get currentDetent => _sheetController.isAttached
-      ? MobileSheetDetent.nearest(_sheetController.size)
-      : _detent;
+  MobileSearchSheetDetent get currentDetent {
+    final extent =
+        _sheetController.isAttached ? _sheetController.size : _extent;
+    final midpoint = (_collapsedExtent + MobileSheetDetent.expanded.extent) / 2;
+    return extent < midpoint
+        ? MobileSearchSheetDetent.collapsed
+        : MobileSearchSheetDetent.expanded;
+  }
 
-  Future<void> animateToDetent(MobileSheetDetent detent) async {
+  double _extentFor(MobileSearchSheetDetent detent) =>
+      detent == MobileSearchSheetDetent.collapsed
+          ? _collapsedExtent
+          : MobileSheetDetent.expanded.extent;
+
+  Future<void> animateToDetent(MobileSearchSheetDetent detent) async {
     _detent = detent;
     if (!_sheetController.isAttached) return;
     await _sheetController.animateTo(
-      detent.extent,
+      _extentFor(detent),
       duration: mobileSheetAnimationDuration,
       curve: Curves.easeOutCubic,
     );
   }
 
-  void jumpToDetent(MobileSheetDetent detent) {
+  void jumpToDetent(MobileSearchSheetDetent detent) {
     _detent = detent;
-    _extent = detent.extent;
+    _extent = _extentFor(detent);
     if (_sheetController.isAttached) {
-      _sheetController.jumpTo(detent.extent);
+      _sheetController.jumpTo(_extentFor(detent));
     }
+  }
+
+  void resizeBehindDetail() {
+    if (!_sheetController.isAttached) return;
+    _sheetController.animateTo(
+      MobileSheetDetent.partiallyExpanded.extent,
+      duration: mobileSheetAnimationDuration,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void performSearch(String query) {
@@ -69,12 +90,12 @@ class ExpandableSearchState extends State<ExpandableSearch> {
       _searchController.text = query;
     });
     _performSearch(query);
-    animateToDetent(MobileSheetDetent.expanded);
+    animateToDetent(MobileSearchSheetDetent.expanded);
   }
 
   void expandIfSearching() {
     if (_searchController.text.isNotEmpty) {
-      animateToDetent(MobileSheetDetent.expanded);
+      animateToDetent(MobileSearchSheetDetent.expanded);
     }
   }
 
@@ -86,12 +107,42 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     _focusNode.addListener(() {
       if (mounted &&
           _focusNode.hasFocus &&
-          currentDetent != MobileSheetDetent.expanded) {
+          currentDetent != MobileSearchSheetDetent.expanded) {
         umami.trackEvent(name: 'search_bar_opened');
         context.read<RecommendationService>().startNewRecommendationSession();
-        animateToDetent(MobileSheetDetent.expanded);
+        animateToDetent(MobileSearchSheetDetent.expanded);
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final mediaQuery = MediaQuery.of(context);
+    final reportedBottomSafeArea =
+        mediaQuery.padding.bottom > mediaQuery.viewPadding.bottom
+            ? mediaQuery.padding.bottom
+            : mediaQuery.viewPadding.bottom;
+    _bottomSafeArea = MobileSearchSheetLayout.effectiveBottomSafeArea(
+      reportedBottomSafeArea,
+    );
+    final nextCollapsedExtent = MobileSearchSheetLayout.collapsedExtent(
+      availableHeight: mediaQuery.size.height,
+      bottomSafeArea: reportedBottomSafeArea,
+    );
+    final wasCollapsed = currentDetent == MobileSearchSheetDetent.collapsed;
+    if ((_collapsedExtent - nextCollapsedExtent).abs() < 0.001) return;
+
+    _collapsedExtent = nextCollapsedExtent;
+    if (!_sheetController.isAttached) {
+      _extent = nextCollapsedExtent;
+    } else if (wasCollapsed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _sheetController.isAttached) {
+          jumpToDetent(MobileSearchSheetDetent.collapsed);
+        }
+      });
+    }
   }
 
   @override
@@ -107,7 +158,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   void _handleExtentChanged() {
     if (!mounted || !_sheetController.isAttached) return;
     final extent = _sheetController.size;
-    final detent = MobileSheetDetent.nearest(extent);
+    final detent = currentDetent;
     if ((_extent - extent).abs() > 0.001 || _detent != detent) {
       setState(() {
         _extent = extent;
@@ -124,7 +175,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
 
   void _collapse() {
     _focusNode.unfocus();
-    animateToDetent(MobileSheetDetent.collapsed);
+    animateToDetent(MobileSearchSheetDetent.collapsed);
   }
 
   void _handleCreatorTap(Creator creator) {
@@ -362,18 +413,16 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final contentOpacity = ((_extent - MobileSheetDetent.collapsed.extent) /
-            (MobileSheetDetent.partiallyExpanded.extent -
-                MobileSheetDetent.collapsed.extent))
+    final contentOpacity = ((_extent - _collapsedExtent) /
+            (MobileSheetDetent.expanded.extent - _collapsedExtent))
         .clamp(0.0, 1.0);
 
     return DraggableScrollableSheet(
       controller: _sheetController,
-      initialChildSize: MobileSheetDetent.collapsed.extent,
-      minChildSize: MobileSheetDetent.collapsed.extent,
+      initialChildSize: _collapsedExtent,
+      minChildSize: _collapsedExtent,
       maxChildSize: MobileSheetDetent.expanded.extent,
       snap: true,
-      snapSizes: [MobileSheetDetent.partiallyExpanded.extent],
       snapAnimationDuration: mobileSheetAnimationDuration,
       shouldCloseOnMinExtent: false,
       builder: (context, sheetScrollController) {
@@ -395,8 +444,8 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                 ],
               ),
               clipBehavior: Clip.antiAlias,
-              child: SafeArea(
-                top: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: _bottomSafeArea),
                 child: Column(
                   children: [
                     _buildSheetHeader(
@@ -432,6 +481,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                                   _performSearch(query);
                                 },
                                 showFandomSuggestions: false,
+                                scrollPhysics: const ClampingScrollPhysics(),
                               );
                             },
                           ),
@@ -464,9 +514,8 @@ class ExpandableSearchState extends State<ExpandableSearch> {
       onVerticalDragUpdate: (details) {
         if (!_sheetController.isAttached || _dragStartExtent == null) return;
         final next =
-            (_dragStartExtent! - details.primaryDelta! / availableHeight).clamp(
-                MobileSheetDetent.collapsed.extent,
-                MobileSheetDetent.expanded.extent);
+            (_dragStartExtent! - details.primaryDelta! / availableHeight)
+                .clamp(_collapsedExtent, MobileSheetDetent.expanded.extent);
         _dragStartExtent = next;
         _sheetController.jumpTo(next);
       },
@@ -474,19 +523,17 @@ class ExpandableSearchState extends State<ExpandableSearch> {
         if (!_sheetController.isAttached) return;
         final velocity = details.primaryVelocity ?? 0;
         final current = _sheetController.size;
-        MobileSheetDetent target;
+        MobileSearchSheetDetent target;
         if (velocity < -500) {
-          target = MobileSheetDetent.values.firstWhere(
-            (value) => value.extent > current + 0.01,
-            orElse: () => MobileSheetDetent.expanded,
-          );
+          target = MobileSearchSheetDetent.expanded;
         } else if (velocity > 500) {
-          target = MobileSheetDetent.values.reversed.firstWhere(
-            (value) => value.extent < current - 0.01,
-            orElse: () => MobileSheetDetent.collapsed,
-          );
+          target = MobileSearchSheetDetent.collapsed;
         } else {
-          target = MobileSheetDetent.nearest(current);
+          final midpoint =
+              (_collapsedExtent + MobileSheetDetent.expanded.extent) / 2;
+          target = current < midpoint
+              ? MobileSearchSheetDetent.collapsed
+              : MobileSearchSheetDetent.expanded;
         }
         _dragStartExtent = null;
         animateToDetent(target);
@@ -524,27 +571,10 @@ class ExpandableSearchState extends State<ExpandableSearch> {
             ),
             child: Row(
               children: [
-                if (_extent > MobileSheetDetent.collapsed.extent + 0.02)
-                  IconButton(
-                    tooltip: 'Collapse search',
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      umami.trackEvent(
-                        name: 'search_bar_back_tapped',
-                        data: {
-                          'search_query': _searchController.text,
-                          'creator_id': widget.selectedCreator?.id.toString(),
-                          'creator_name': widget.selectedCreator?.name,
-                        },
-                      );
-                      _collapse();
-                    },
-                  )
-                else
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16),
-                    child: Icon(Icons.search, color: Colors.grey),
-                  ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16),
+                  child: Icon(Icons.search, color: Colors.grey),
+                ),
                 Expanded(
                   child: TextField(
                     controller: _searchController,
@@ -604,9 +634,8 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                             'fandom': fandom,
                           },
                         );
-                        _searchController.text = fandom;
-                        _performSearch(fandom);
-                        _focusNode.requestFocus();
+                        _focusNode.unfocus();
+                        performSearch(fandom);
                       },
                       backgroundColor: theme.colorScheme.primaryContainer
                           .withValues(alpha: 0.5),

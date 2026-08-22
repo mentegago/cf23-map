@@ -17,4 +17,29 @@ enum MobileSheetDetent {
   }
 }
 
+enum MobileSearchSheetDetent { collapsed, expanded }
+
+abstract final class MobileSearchSheetLayout {
+  static const double headerHeight = 132;
+  static const double minimumBottomSafeArea = 24;
+  static const double minimumCollapsedExtent = 0.16;
+  static const double maximumCollapsedExtent = 0.24;
+
+  static double effectiveBottomSafeArea(double reportedBottomSafeArea) {
+    return reportedBottomSafeArea < minimumBottomSafeArea
+        ? minimumBottomSafeArea
+        : reportedBottomSafeArea;
+  }
+
+  static double collapsedExtent({
+    required double availableHeight,
+    required double bottomSafeArea,
+  }) {
+    final effectiveSafeArea = effectiveBottomSafeArea(bottomSafeArea);
+    return ((headerHeight + effectiveSafeArea) / availableHeight)
+        .clamp(minimumCollapsedExtent, maximumCollapsedExtent)
+        .toDouble();
+  }
+}
+
 const mobileSheetAnimationDuration = Duration(milliseconds: 320);
