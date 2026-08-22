@@ -4,8 +4,11 @@ import '../../models/creator.dart';
 import '../../services/analytics_service.dart';
 import '../../services/creator_data_service.dart';
 import '../../services/recommendation_service.dart';
+import '../../utils/fuzzy_score.dart';
 import '../../utils/int_encoding.dart';
+import '../../utils/string_utils.dart';
 import '../creator_list_view.dart';
+import 'mobile_sheet_detent.dart';
 
 class ExpandableSearch extends StatefulWidget {
   final List<Creator> creators;
@@ -32,22 +35,46 @@ class ExpandableSearch extends StatefulWidget {
 class ExpandableSearchState extends State<ExpandableSearch> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final ScrollController _searchScrollController = ScrollController();
-  bool _isExpanded = false;
+  ScrollController? _activeScrollController;
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+  MobileSheetDetent _detent = MobileSheetDetent.collapsed;
+  double _extent = MobileSheetDetent.collapsed.extent;
+  double? _dragStartExtent;
+
+  MobileSheetDetent get currentDetent => _sheetController.isAttached
+      ? MobileSheetDetent.nearest(_sheetController.size)
+      : _detent;
+
+  Future<void> animateToDetent(MobileSheetDetent detent) async {
+    _detent = detent;
+    if (!_sheetController.isAttached) return;
+    await _sheetController.animateTo(
+      detent.extent,
+      duration: mobileSheetAnimationDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void jumpToDetent(MobileSheetDetent detent) {
+    _detent = detent;
+    _extent = detent.extent;
+    if (_sheetController.isAttached) {
+      _sheetController.jumpTo(detent.extent);
+    }
+  }
 
   void performSearch(String query) {
     setState(() {
       _searchController.text = query;
-      _isExpanded = true;
     });
     _performSearch(query);
+    animateToDetent(MobileSheetDetent.expanded);
   }
 
   void expandIfSearching() {
     if (_searchController.text.isNotEmpty) {
-      setState(() {
-        _isExpanded = true;
-      });
+      animateToDetent(MobileSheetDetent.expanded);
     }
   }
 
@@ -55,53 +82,53 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   void initState() {
     super.initState();
 
-    // Listen to focus changes to expand (but not collapse)
+    _sheetController.addListener(_handleExtentChanged);
     _focusNode.addListener(() {
-      if (mounted && !_isExpanded && _focusNode.hasFocus) {
+      if (mounted &&
+          _focusNode.hasFocus &&
+          currentDetent != MobileSheetDetent.expanded) {
         umami.trackEvent(name: 'search_bar_opened');
         context.read<RecommendationService>().startNewRecommendationSession();
-        setState(() {
-          _isExpanded = true;
-        });
+        animateToDetent(MobileSheetDetent.expanded);
       }
     });
-  }
-
-  @override
-  void didUpdateWidget(ExpandableSearch oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    // When detail sheet closes, return to search if a query is active, otherwise reset
-    if (oldWidget.selectedCreator != null && widget.selectedCreator == null) {
-      if (_searchController.text.isEmpty) {
-        setState(() {
-          _searchController.clear();
-          _isExpanded = false;
-        });
-      }
-    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _focusNode.dispose();
+    _sheetController
+      ..removeListener(_handleExtentChanged)
+      ..dispose();
     super.dispose();
   }
 
+  void _handleExtentChanged() {
+    if (!mounted || !_sheetController.isAttached) return;
+    final extent = _sheetController.size;
+    final detent = MobileSheetDetent.nearest(extent);
+    if ((_extent - extent).abs() > 0.001 || _detent != detent) {
+      setState(() {
+        _extent = extent;
+        _detent = detent;
+      });
+    }
+  }
+
   void _performSearch(String query) {
-    _searchScrollController.jumpTo(0);
+    if (_activeScrollController?.hasClients ?? false) {
+      _activeScrollController!.jumpTo(0);
+    }
   }
 
   void _collapse() {
     _focusNode.unfocus();
-    setState(() {
-      _isExpanded = false;
-    });
+    animateToDetent(MobileSheetDetent.collapsed);
   }
 
   void _handleCreatorTap(Creator creator) {
-    _collapse();
+    _focusNode.unfocus();
     widget.onCreatorSelected(
       creator,
       source: 'list',
@@ -110,7 +137,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   }
 
   void _handleRecommendationTap(Creator creator) {
-    _collapse();
+    _focusNode.unfocus();
     widget.onCreatorSelected(creator, source: 'recommendation');
   }
 
@@ -335,151 +362,307 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final contentOpacity = ((_extent - MobileSheetDetent.collapsed.extent) /
+            (MobileSheetDetent.partiallyExpanded.extent -
+                MobileSheetDetent.collapsed.extent))
+        .clamp(0.0, 1.0);
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Full-screen overlay (always present, just hidden when not expanded)
-        Positioned.fill(
-          child: IgnorePointer(
-            ignoring: !_isExpanded,
-            child: AnimatedOpacity(
-              opacity: _isExpanded ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: Container(
-                color: theme.colorScheme.surface,
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 80), // Space for search bar
-                      // Results list
-                      Expanded(
-                        child: ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _searchController,
-                          builder: (context, value, _) {
-                            return CreatorListView(
-                              creators: widget.creators,
-                              searchQuery: value.text,
-                              onCreatorSelected: _handleCreatorTap,
-                              onRecommendationSelected:
-                                  _handleRecommendationTap,
-                              scrollController: _searchScrollController,
-                              onShouldHideListScreen: () {
-                                _collapse();
-                              },
-                              onClearSearch: () {
-                                _searchController.clear();
-                                _performSearch('');
-                              },
-                              onSearchQueryChanged: (query) {
-                                _searchController.text = query;
-                                _performSearch(query);
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Search bar (always on top)
-        Positioned(
-          left: 0,
-          right: 0,
-          top: 0,
-          child: SafeArea(
-            child: Container(
-              margin: const EdgeInsets.all(16),
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: MobileSheetDetent.collapsed.extent,
+      minChildSize: MobileSheetDetent.collapsed.extent,
+      maxChildSize: MobileSheetDetent.expanded.extent,
+      snap: true,
+      snapSizes: [MobileSheetDetent.partiallyExpanded.extent],
+      snapAnimationDuration: mobileSheetAnimationDuration,
+      shouldCloseOnMinExtent: false,
+      builder: (context, sheetScrollController) {
+        _activeScrollController = sheetScrollController;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Container(
               decoration: BoxDecoration(
-                // White search bar in light mode, dark neutral in dark mode
-                color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                  width: 0.8,
-                ),
+                color: theme.colorScheme.surface,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.18),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                    offset: const Offset(0, -2),
                   ),
                 ],
               ),
-              child: Row(
-                children: [
-                  if (_isExpanded)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () {
-                        umami.trackEvent(
-                          name: 'search_bar_back_tapped',
-                          data: {
-                            'search_query': _searchController.text,
-                            'creator_id': widget.selectedCreator?.id.toString(),
-                            'creator_name': widget.selectedCreator?.name,
-                          },
-                        );
-                        _collapse();
-                      },
-                    )
-                  else
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16),
-                      child: Icon(Icons.search, color: Colors.grey),
+              clipBehavior: Clip.antiAlias,
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    _buildSheetHeader(
+                      context,
+                      isDark: isDark,
+                      availableHeight: constraints.maxHeight /
+                          (_sheetController.isAttached
+                              ? _sheetController.size
+                              : _extent),
                     ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        if (!_focusNode.hasFocus) {
-                          _focusNode.requestFocus();
-                        }
-                      },
-                      child: AbsorbPointer(
-                        absorbing: false,
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _focusNode,
-                          decoration: const InputDecoration(
-                            hintText: 'Search name, booth, or fandom...',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
+                    Expanded(
+                      child: IgnorePointer(
+                        ignoring: contentOpacity < 0.95,
+                        child: Opacity(
+                          opacity: contentOpacity,
+                          child: ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _searchController,
+                            builder: (context, value, _) {
+                              return CreatorListView(
+                                creators: widget.creators,
+                                searchQuery: value.text,
+                                onCreatorSelected: _handleCreatorTap,
+                                onRecommendationSelected:
+                                    _handleRecommendationTap,
+                                scrollController: sheetScrollController,
+                                onShouldHideListScreen: _collapse,
+                                onClearSearch: () {
+                                  _searchController.clear();
+                                  _performSearch('');
+                                },
+                                onSearchQueryChanged: (query) {
+                                  _searchController.text = query;
+                                  _performSearch(query);
+                                },
+                                showFandomSuggestions: false,
+                              );
+                            },
                           ),
-                          onChanged: _performSearch,
-                          onSubmitted: _handleSearchSubmitted,
                         ),
                       ),
                     ),
-                  ),
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _searchController,
-                    builder: (context, value, _) {
-                      if (value.text.isNotEmpty || widget.onClear != null) {
-                        return IconButton(
-                          icon: Icon(Icons.close,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5),
-                              size: 20),
-                          onPressed: _handleClear,
-                        );
-                      } else {
-                        return const SizedBox(width: 8);
-                      }
-                    },
-                  )
-                ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSheetHeader(
+    BuildContext context, {
+    required bool isDark,
+    required double availableHeight,
+  }) {
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragStart: (_) {
+        _dragStartExtent =
+            _sheetController.isAttached ? _sheetController.size : _extent;
+      },
+      onVerticalDragUpdate: (details) {
+        if (!_sheetController.isAttached || _dragStartExtent == null) return;
+        final next =
+            (_dragStartExtent! - details.primaryDelta! / availableHeight).clamp(
+                MobileSheetDetent.collapsed.extent,
+                MobileSheetDetent.expanded.extent);
+        _dragStartExtent = next;
+        _sheetController.jumpTo(next);
+      },
+      onVerticalDragEnd: (details) {
+        if (!_sheetController.isAttached) return;
+        final velocity = details.primaryVelocity ?? 0;
+        final current = _sheetController.size;
+        MobileSheetDetent target;
+        if (velocity < -500) {
+          target = MobileSheetDetent.values.firstWhere(
+            (value) => value.extent > current + 0.01,
+            orElse: () => MobileSheetDetent.expanded,
+          );
+        } else if (velocity > 500) {
+          target = MobileSheetDetent.values.reversed.firstWhere(
+            (value) => value.extent < current - 0.01,
+            orElse: () => MobileSheetDetent.collapsed,
+          );
+        } else {
+          target = MobileSheetDetent.nearest(current);
+        }
+        _dragStartExtent = null;
+        animateToDetent(target);
+      },
+      child: Column(
+        children: [
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 8, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-        ),
-      ],
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                width: 0.8,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                if (_extent > MobileSheetDetent.collapsed.extent + 0.02)
+                  IconButton(
+                    tooltip: 'Collapse search',
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      umami.trackEvent(
+                        name: 'search_bar_back_tapped',
+                        data: {
+                          'search_query': _searchController.text,
+                          'creator_id': widget.selectedCreator?.id.toString(),
+                          'creator_name': widget.selectedCreator?.name,
+                        },
+                      );
+                      _collapse();
+                    },
+                  )
+                else
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16),
+                    child: Icon(Icons.search, color: Colors.grey),
+                  ),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _focusNode,
+                    decoration: const InputDecoration(
+                      hintText: 'Search name, booth, or fandom...',
+                      border: InputBorder.none,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    onChanged: _performSearch,
+                    onSubmitted: _handleSearchSubmitted,
+                  ),
+                ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchController,
+                  builder: (context, value, _) {
+                    if (value.text.isNotEmpty || widget.onClear != null) {
+                      return IconButton(
+                        tooltip: 'Clear search',
+                        icon: Icon(
+                          Icons.close,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
+                          size: 20,
+                        ),
+                        onPressed: _handleClear,
+                      );
+                    }
+                    return const SizedBox(width: 8);
+                  },
+                ),
+              ],
+            ),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchController,
+            builder: (context, value, _) {
+              final suggestions = _headerFandomSuggestions(context, value.text);
+              if (suggestions.isEmpty) return const SizedBox(height: 48);
+              return SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: suggestions.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final fandom = suggestions[index];
+                    return ActionChip(
+                      label: Text(fandom, style: const TextStyle(fontSize: 12)),
+                      onPressed: () {
+                        umami.trackEvent(
+                          name: 'fandom_tapped',
+                          data: {
+                            'source': 'search_suggestion',
+                            'fandom': fandom,
+                          },
+                        );
+                        _searchController.text = fandom;
+                        _performSearch(fandom);
+                        _focusNode.requestFocus();
+                      },
+                      backgroundColor: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.5),
+                      side: BorderSide(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
     );
+  }
+
+  List<String> _headerFandomSuggestions(
+    BuildContext context,
+    String searchQuery,
+  ) {
+    final provider = context.read<CreatorDataProvider>();
+    if (searchQuery.isEmpty &&
+        !provider.isCreatorCustomListMode &&
+        provider.popularSearches.isNotEmpty) {
+      return provider.popularSearches;
+    }
+
+    final counts = <String, int>{};
+    for (final creator in widget.creators) {
+      for (final fandom in creator.fandoms) {
+        counts[fandom] = (counts[fandom] ?? 0) + 1;
+      }
+    }
+    if (searchQuery.isEmpty) {
+      final entries = counts.entries.toList()
+        ..sort((a, b) {
+          final count = b.value.compareTo(a.value);
+          return count != 0 ? count : a.key.compareTo(b.key);
+        });
+      return entries.take(20).map((entry) => entry.key).toList();
+    }
+
+    final query = optimizeStringFormat(searchQuery.trim().toLowerCase());
+    final matches = counts.entries
+        .map((entry) => (entry, fuzzyScore(query, entry.key.toLowerCase())))
+        .where((match) => match.$2.matched && match.$2.score >= 0.7)
+        .toList()
+      ..sort((a, b) {
+        final score = b.$2.score.compareTo(a.$2.score);
+        if (score != 0) return score;
+        final count = b.$1.value.compareTo(a.$1.value);
+        return count != 0 ? count : a.$1.key.compareTo(b.$1.key);
+      });
+    return matches.take(20).map((match) => match.$1.key).toList();
   }
 }

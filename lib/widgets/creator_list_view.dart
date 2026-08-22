@@ -28,6 +28,7 @@ class CreatorListView extends StatefulWidget {
   final VoidCallback onShouldHideListScreen;
   final VoidCallback? onClearSearch;
   final Function(String)? onSearchQueryChanged;
+  final bool showFandomSuggestions;
 
   const CreatorListView({
     super.key,
@@ -39,6 +40,7 @@ class CreatorListView extends StatefulWidget {
     this.scrollController,
     this.onClearSearch,
     this.onSearchQueryChanged,
+    this.showFandomSuggestions = true,
   });
 
   @override
@@ -383,8 +385,9 @@ class _CreatorListViewState extends State<CreatorListView> {
   Widget _buildSearchResults(BuildContext context, bool useCardView) {
     final theme = Theme.of(context);
     final fandomSuggestions = _fandomSuggestions;
-    final hasFandomSuggestions =
-        fandomSuggestions.isNotEmpty && _lastSelectedFandom == null;
+    final hasFandomSuggestions = widget.showFandomSuggestions &&
+        fandomSuggestions.isNotEmpty &&
+        _lastSelectedFandom == null;
 
     // Calculate item count
     int itemCount = 0;
@@ -495,8 +498,9 @@ class _CreatorListViewState extends State<CreatorListView> {
             coldStartFandoms: creatorDataProvider.popularSearches,
           );
     final fandomSuggestions = _fandomSuggestions;
-    final hasFandomSuggestions =
-        fandomSuggestions.isNotEmpty && _lastSelectedFandom == null;
+    final hasFandomSuggestions = widget.showFandomSuggestions &&
+        fandomSuggestions.isNotEmpty &&
+        _lastSelectedFandom == null;
 
     // Calculate total item count for ListView.builder
     int itemCount = 0;
@@ -556,8 +560,9 @@ class _CreatorListViewState extends State<CreatorListView> {
     VoidCallback onShouldHideListScreen,
   ) {
     final fandomSuggestions = _fandomSuggestions;
-    final hasFandomSuggestions =
-        fandomSuggestions.isNotEmpty && _lastSelectedFandom == null;
+    final hasFandomSuggestions = widget.showFandomSuggestions &&
+        fandomSuggestions.isNotEmpty &&
+        _lastSelectedFandom == null;
     int currentIndex = 0;
 
     // Fandom suggestions section
