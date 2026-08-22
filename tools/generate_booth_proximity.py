@@ -100,6 +100,11 @@ def distances_from(
 def generate(map_path: Path) -> dict[str, object]:
     map_bytes = map_path.read_bytes()
     grid = json.loads(map_bytes)
+    canonical_map_bytes = json.dumps(
+        grid,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
     cells_by_booth: dict[str, set[tuple[int, int]]] = defaultdict(set)
     for row, values in enumerate(grid):
         for col, value in enumerate(values):
@@ -144,7 +149,7 @@ def generate(map_path: Path) -> dict[str, object]:
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "map_sha256": hashlib.sha256(map_bytes).hexdigest(),
+        "map_sha256": hashlib.sha256(canonical_map_bytes).hexdigest(),
         "max_distance": MAX_DISTANCE,
         "max_neighbors": MAX_NEIGHBORS,
         "booths": booths,
