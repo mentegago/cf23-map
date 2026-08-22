@@ -1,0 +1,91 @@
+class BoothProximityData {
+  static const int currentSchemaVersion = 1;
+  static const BoothProximityData empty = BoothProximityData._(
+    boothIndices: {},
+    distances: [],
+    mapSha256: '',
+    maxDistance: 0,
+    maxNeighbors: 0,
+  );
+
+  final Map<String, int> _boothIndices;
+  final List<Map<int, int>> _distances;
+  final String mapSha256;
+  final int maxDistance;
+  final int maxNeighbors;
+
+  const BoothProximityData._({
+    required Map<String, int> boothIndices,
+    required List<Map<int, int>> distances,
+    required this.mapSha256,
+    required this.maxDistance,
+    required this.maxNeighbors,
+  })  : _boothIndices = boothIndices,
+        _distances = distances;
+
+  factory BoothProximityData.fromJson(Map<String, dynamic> json) {
+    final schemaVersion = (json['schema_version'] as num?)?.toInt();
+    if (schemaVersion != currentSchemaVersion) {
+      throw FormatException(
+        'Unsupported booth proximity schema: $schemaVersion',
+      );
+    }
+
+    final booths = (json['booths'] as List<dynamic>?)
+            ?.map((value) => value.toString())
+            .toList() ??
+        const <String>[];
+    final rawNeighbors = json['neighbors'] as List<dynamic>?;
+    if (rawNeighbors == null || rawNeighbors.length != booths.length) {
+      throw const FormatException('Invalid booth proximity neighbor table');
+    }
+
+    final distances = <Map<int, int>>[];
+    for (final rawList in rawNeighbors) {
+      final entries = <int, int>{};
+      for (final rawPair in rawList as List<dynamic>) {
+        final pair = rawPair as List<dynamic>;
+        if (pair.length != 2) {
+          throw const FormatException('Invalid booth proximity entry');
+        }
+        final target = (pair[0] as num).toInt();
+        final distance = (pair[1] as num).toInt();
+        if (target < 0 || target >= booths.length || distance < 0) {
+          throw const FormatException('Out-of-range booth proximity entry');
+        }
+        entries[target] = distance;
+      }
+      distances.add(entries);
+    }
+
+    return BoothProximityData._(
+      boothIndices: {
+        for (var index = 0; index < booths.length; index++)
+          booths[index]: index,
+      },
+      distances: distances,
+      mapSha256: json['map_sha256']?.toString() ?? '',
+      maxDistance: (json['max_distance'] as num?)?.toInt() ?? 0,
+      maxNeighbors: (json['max_neighbors'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  int? distanceBetween(String firstBooth, String secondBooth) {
+    final first =
+        _boothIndices[firstBooth] ?? _boothIndices[_canonicalBooth(firstBooth)];
+    final second = _boothIndices[secondBooth] ??
+        _boothIndices[_canonicalBooth(secondBooth)];
+    if (first == null || second == null) return null;
+    if (first == second) return 0;
+    return _distances[first][second] ?? _distances[second][first];
+  }
+
+  static String _canonicalBooth(String booth) {
+    final match = RegExp(r'^([A-Z]+)-0*(\d+)([aAbB]?)$')
+        .firstMatch(booth.trim().toUpperCase());
+    if (match == null) return booth.trim();
+    final number = int.tryParse(match.group(2)!);
+    if (number == null) return booth.trim();
+    return '${match.group(1)}-$number${match.group(3)!.toLowerCase()}';
+  }
+}

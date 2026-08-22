@@ -3,14 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'creator_fandom_pills.dart';
 import 'sample_works_gallery.dart';
 
 class CreatorTileCard extends StatefulWidget {
-  const CreatorTileCard(
-      {super.key, required this.creator, required this.onCreatorSelected});
+  const CreatorTileCard({
+    super.key,
+    required this.creator,
+    required this.onCreatorSelected,
+    this.fandoms,
+  });
 
   final Creator creator;
   final Function(Creator) onCreatorSelected;
+  final List<String>? fandoms;
 
   @override
   State<CreatorTileCard> createState() => _CreatorTileCardState();
@@ -48,6 +54,7 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final fandoms = widget.fandoms ?? widget.creator.fandoms;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -153,33 +160,17 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
                         ),
                       ),
                       // Horizontal scrolling fandoms
-                      if (widget.creator.fandoms.isNotEmpty)
+                      if (fandoms.isNotEmpty)
                         Container(
                           height: 32,
                           margin: const EdgeInsets.only(bottom: 16),
-                          child: ListView.separated(
+                          child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: widget.creator.fandoms.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(width: 6),
-                            itemBuilder: (context, index) {
-                              final fandom = widget.creator.fandoms[index];
-                              return Chip(
-                                label: Text(
-                                  fandom,
-                                  style: theme.textTheme.labelSmall,
-                                ),
-                                backgroundColor:
-                                    theme.colorScheme.surfaceContainerHighest,
-                                side: BorderSide(
-                                  color: theme.colorScheme.outline
-                                      .withValues(alpha: 0.2),
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                              );
-                            },
+                            child: CreatorFandomPills(
+                              key: ValueKey(
+                                  'creator-card-fandoms-${widget.creator.id}'),
+                              fandoms: fandoms,
+                            ),
                           ),
                         ),
                     ],

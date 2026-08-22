@@ -73,37 +73,114 @@ void main() {
     expect(interaction.consideration, 0.5);
   });
 
-  test('recommendations are published asynchronously', () async {
-    final service = RecommendationService();
+  test('no profile data keeps the alphabetical-list fallback', () async {
+    final service = RecommendationService(
+      refreshDelay: const Duration(milliseconds: 20),
+    );
     await service.initialize();
     final creators = [testCreator(1), testCreator(2), testCreator(3)];
 
-    final immediate = service.recommendationsFor(
-      creators: creators,
-      favoriteIds: const {},
-      coldStartFandoms: const ['Blue Archive'],
-    );
-    expect(immediate, isEmpty);
-
-    final completer = Completer<void>();
-    service.addListener(() {
-      final results = service.recommendationsFor(
-        creators: creators,
-        favoriteIds: const {},
-        coldStartFandoms: const ['Blue Archive'],
-      );
-      if (results.isNotEmpty && !completer.isCompleted) completer.complete();
-    });
-
-    await completer.future.timeout(const Duration(seconds: 5));
     expect(
       service.recommendationsFor(
         creators: creators,
         favoriteIds: const {},
-        coldStartFandoms: const ['Blue Archive'],
       ),
-      isNotEmpty,
+      isEmpty,
     );
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(
+      service.recommendationsFor(
+        creators: creators,
+        favoriteIds: const {},
+      ),
+      isEmpty,
+    );
+  });
+
+  test('home fandoms put interests first and fill from popular fandoms',
+      () async {
+    final service = RecommendationService();
+    await service.initialize();
+    final creators = [
+      testCreator(1),
+      Creator(
+        id: 2,
+        userId: 'user-2',
+        name: 'Creator 2',
+        booths: const ['A-2'],
+        day: 'BOTH',
+        fandoms: const ['Hololive'],
+      ),
+    ];
+    service.recordFandomInterest('Blue Archive');
+    final popular = [
+      'Hololive',
+      'Blue Archive',
+      ...List.generate(25, (index) => 'Popular $index'),
+    ];
+
+    final suggestions = service.homeFandomSuggestionsFor(
+      creators: creators,
+      favoriteIds: const {},
+      popularFandoms: popular,
+    );
+
+    expect(suggestions, hasLength(20));
+    expect(suggestions.first, 'Blue Archive');
+    expect(
+        suggestions.where((fandom) => fandom == 'Blue Archive'), hasLength(1));
+    expect(suggestions[1], 'Hololive');
+    service.dispose();
+  });
+
+  test('profile changes batch and refresh in the background', () async {
+    final service = RecommendationService(
+      refreshDelay: const Duration(milliseconds: 80),
+    );
+    await service.initialize();
+    final creators = [testCreator(1), testCreator(2), testCreator(3)];
+    expect(
+      service.recommendationsFor(
+        creators: creators,
+        favoriteIds: const {},
+      ),
+      isEmpty,
+    );
+
+    var notifications = 0;
+    final completer = Completer<void>();
+    service.addListener(() {
+      notifications++;
+      if (!completer.isCompleted) completer.complete();
+    });
+
+    service.recordFandomInterest('Blue Archive');
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    service.recordFandomInterest('Hololive');
+
+    final immediate = service.recommendationsFor(
+      creators: creators,
+      favoriteIds: const {},
+    );
+    expect(immediate, isEmpty);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(notifications, 0);
+
+    await completer.future.timeout(const Duration(seconds: 5));
+    final published = service.recommendationsFor(
+      creators: creators,
+      favoriteIds: const {},
+    );
+    expect(published, isNotEmpty);
+
+    service.recordFandomInterest('Touhou');
+    expect(
+      service.recommendationsFor(
+          creators: creators,
+          favoriteIds: const {}).map((result) => result.creator.id),
+      published.map((result) => result.creator.id),
+    );
+    service.dispose();
   });
 
   test('disabled service skips profiling and recommendation work', () async {
@@ -117,7 +194,6 @@ void main() {
     service.recordExternalLinkOpened(creator);
     service.recordCreatorShared(creator);
     service.recordFavoriteChanged(creator, true);
-    service.startNewRecommendationSession();
 
     expect(service.isInitialized, isTrue);
     expect(service.profile.creatorInteractions, isEmpty);
@@ -126,7 +202,6 @@ void main() {
       service.recommendationsFor(
         creators: [creator],
         favoriteIds: const {},
-        coldStartFandoms: const ['Blue Archive'],
       ),
       isEmpty,
     );

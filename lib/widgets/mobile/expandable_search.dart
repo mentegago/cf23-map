@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/analytics_service.dart';
 import '../../services/creator_data_service.dart';
-import '../../services/recommendation_service.dart';
 import '../../utils/fuzzy_score.dart';
 import '../../utils/int_encoding.dart';
 import '../../utils/string_utils.dart';
@@ -109,7 +108,6 @@ class ExpandableSearchState extends State<ExpandableSearch> {
           _focusNode.hasFocus &&
           currentDetent != MobileSearchSheetDetent.expanded) {
         umami.trackEvent(name: 'search_bar_opened');
-        context.read<RecommendationService>().startNewRecommendationSession();
         animateToDetent(MobileSearchSheetDetent.expanded);
       }
     });

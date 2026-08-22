@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - master  # Change this to your default branch if different
+      - main
   workflow_dispatch:  # Allow manual trigger
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -28,11 +28,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.8'  # Specify your Flutter version
+          flutter-version: '3.41.7'  # Specify your Flutter version
           channel: 'stable'
       
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Validate generated booth proximity data
+        run: python tools/generate_booth_proximity.py --check
       
       - name: Build web
         env:

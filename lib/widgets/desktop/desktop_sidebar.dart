@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/creator_data_service.dart';
-import '../../services/recommendation_service.dart';
 import '../../utils/int_encoding.dart';
 import '../creator_detail_content.dart';
 import '../creator_list_view.dart';
@@ -42,7 +41,6 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
     _searchFocusNode.addListener(() {
       if (mounted && _searchFocusNode.hasFocus) {
         umami.trackEvent(name: 'search_bar_opened');
-        context.read<RecommendationService>().startNewRecommendationSession();
         setState(() {
           _showSearchList = true;
         });
