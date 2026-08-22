@@ -31,6 +31,7 @@ flutter:
   
   assets:
     - data/map.json
+    - data/booth-proximity.json
     - data/creator-data-initial.json
     - assets/
   

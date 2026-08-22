@@ -291,11 +291,6 @@ class _CreatorListViewState extends State<CreatorListView> {
     super.initState();
     // Pre-compute fandom counts when widget is first created
     _computeFandomCounts();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<RecommendationService>().startNewRecommendationSession();
-      }
-    });
   }
 
   @override
@@ -305,17 +300,14 @@ class _CreatorListViewState extends State<CreatorListView> {
     // Clear selected fandom when search query changes (meaning user manually typed)
     // Only clear if the new query doesn't match the last selected fandom
     if (oldWidget.searchQuery != widget.searchQuery) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final controller = widget.scrollController;
+        if (mounted && controller != null && controller.hasClients) {
+          controller.jumpTo(0);
+        }
+      });
       if (widget.searchQuery != _lastSelectedFandom) {
         _lastSelectedFandom = null;
-      }
-      if (oldWidget.searchQuery.isNotEmpty && widget.searchQuery.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            context
-                .read<RecommendationService>()
-                .startNewRecommendationSession();
-          }
-        });
       }
     }
 
@@ -386,6 +378,15 @@ class _CreatorListViewState extends State<CreatorListView> {
 
   Widget _buildSearchResults(BuildContext context, bool useCardView) {
     final theme = Theme.of(context);
+    final favoriteIds = context.select(
+      (FavoritesService service) =>
+          service.favorites.map((creator) => creator.id).toSet(),
+    );
+    final filteredCreators = [
+      ..._filteredCreators.where((creator) => favoriteIds.contains(creator.id)),
+      ..._filteredCreators
+          .where((creator) => !favoriteIds.contains(creator.id)),
+    ];
     final fandomSuggestions = _fandomSuggestions;
     final hasFandomSuggestions = widget.showFandomSuggestions &&
         fandomSuggestions.isNotEmpty &&
@@ -397,7 +398,7 @@ class _CreatorListViewState extends State<CreatorListView> {
       itemCount += 1; // Fandom suggestions section
     }
     itemCount += 1; // Results count header
-    if (_filteredCreators.isEmpty) {
+    if (filteredCreators.isEmpty) {
       itemCount += 1; // No results message
     } else {
       itemCount += _filteredCreators.length; // Creator results
@@ -431,14 +432,14 @@ class _CreatorListViewState extends State<CreatorListView> {
           // Results count header with "Show on Map" button
           return _SearchResultsHeader(
             resultCount: _filteredCreators.length,
-            filteredCreators: _filteredCreators,
+            filteredCreators: filteredCreators,
             searchQuery: widget.searchQuery,
             onShouldHideListScreen: widget.onShouldHideListScreen,
             onClearSearch: widget.onClearSearch,
           );
         }
 
-        if (_filteredCreators.isEmpty) {
+        if (filteredCreators.isEmpty) {
           // No results message
           return Center(
             child: Padding(
@@ -465,7 +466,7 @@ class _CreatorListViewState extends State<CreatorListView> {
         }
 
         // Regular search result
-        final creator = _filteredCreators[adjustedIndex - 1];
+        final creator = filteredCreators[adjustedIndex - 1];
         return useCardView
             ? CreatorTileCard(
                 creator: creator, onCreatorSelected: widget.onCreatorSelected)
@@ -492,21 +493,32 @@ class _CreatorListViewState extends State<CreatorListView> {
         : context.select(
             (FavoritesService favoritesService) => favoritesService.favorites);
     final recommendationService = context.watch<RecommendationService>();
-    final creatorDataProvider = context.read<CreatorDataProvider>();
+    final favoriteIds = favorites.map((creator) => creator.id).toSet();
     final recommendations = isCreatorCustomListMode
         ? const <RecommendationResult>[]
         : recommendationService.recommendationsFor(
             creators: widget.creators,
-            favoriteIds: favorites.map((creator) => creator.id).toSet(),
-            coldStartFandoms: creatorDataProvider.popularSearches,
+            favoriteIds: favoriteIds,
           );
-    final fandomSuggestions = _fandomSuggestions;
+    final popularFandomSuggestions = _fandomSuggestions;
+    final fandomSuggestions = isCreatorCustomListMode
+        ? popularFandomSuggestions
+        : recommendationService.homeFandomSuggestionsFor(
+            creators: widget.creators,
+            favoriteIds: favoriteIds,
+            popularFandoms: popularFandomSuggestions,
+          );
     final hasFandomSuggestions = widget.showFandomSuggestions &&
         fandomSuggestions.isNotEmpty &&
         _lastSelectedFandom == null;
 
     // Calculate total item count for ListView.builder
     int itemCount = 0;
+
+    // Favorites section: header + favorites + share button (if any and storage is available)
+    if (favorites.isNotEmpty) {
+      itemCount += 1 + favorites.length + 1; // +1 for share button
+    }
 
     // Fandom suggestions section
     if (hasFandomSuggestions) {
@@ -516,11 +528,6 @@ class _CreatorListViewState extends State<CreatorListView> {
     // Personalized recommendations: header + creators.
     if (recommendations.isNotEmpty) {
       itemCount += 1 + recommendations.length;
-    }
-
-    // Favorites section: header + favorites + share button (if any and storage is available)
-    if (favorites.isNotEmpty) {
-      itemCount += 1 + favorites.length + 1; // +1 for share button
     }
 
     // All creators section: header + all creators
@@ -543,6 +550,7 @@ class _CreatorListViewState extends State<CreatorListView> {
             theme,
             favorites,
             recommendations,
+            fandomSuggestions,
             isCreatorCustomListMode,
             useCardView,
             showAddAllToFavorites,
@@ -557,19 +565,19 @@ class _CreatorListViewState extends State<CreatorListView> {
     ThemeData theme,
     List<Creator> favorites,
     List<RecommendationResult> recommendations,
+    List<String> fandomSuggestions,
     bool isCreatorCustomListMode,
     bool useCardView,
     bool showAddAllToFavorites,
     bool shouldRefreshOnReturn,
     VoidCallback onShouldHideListScreen,
   ) {
-    final fandomSuggestions = _fandomSuggestions;
     final hasFandomSuggestions = widget.showFandomSuggestions &&
         fandomSuggestions.isNotEmpty &&
         _lastSelectedFandom == null;
     int currentIndex = 0;
 
-    // Fandom suggestions section
+    // Fandom suggestions sit directly below the search controls.
     if (hasFandomSuggestions) {
       if (index == currentIndex) {
         return _FandomSuggestions(
@@ -582,6 +590,32 @@ class _CreatorListViewState extends State<CreatorListView> {
             widget.onSearchQueryChanged?.call(fandom);
           },
         );
+      }
+      currentIndex++;
+    }
+
+    // Favorites stay above personalized recommendations.
+    if (favorites.isNotEmpty) {
+      if (index == currentIndex) {
+        return _FavoritesSectionHeader(
+            onShouldHideListScreen: onShouldHideListScreen);
+      }
+      currentIndex++;
+
+      final favoriteIndex = index - currentIndex;
+      if (favoriteIndex >= 0 && favoriteIndex < favorites.length) {
+        return useCardView
+            ? CreatorTileCard(
+                creator: favorites[favoriteIndex],
+                onCreatorSelected: widget.onCreatorSelected)
+            : CreatorTile(
+                creator: favorites[favoriteIndex],
+                onCreatorSelected: widget.onCreatorSelected);
+      }
+      currentIndex += favorites.length;
+
+      if (index == currentIndex) {
+        return const _ShareFavorites();
       }
       currentIndex++;
     }
@@ -612,48 +646,23 @@ class _CreatorListViewState extends State<CreatorListView> {
       final recommendationIndex = index - currentIndex;
       if (recommendationIndex >= 0 &&
           recommendationIndex < recommendations.length) {
-        final creator = recommendations[recommendationIndex].creator;
+        final recommendation = recommendations[recommendationIndex];
+        final creator = recommendation.creator;
         final onSelected =
             widget.onRecommendationSelected ?? widget.onCreatorSelected;
         return useCardView
             ? CreatorTileCard(
                 creator: creator,
                 onCreatorSelected: onSelected,
+                fandoms: recommendation.matchingFandoms,
               )
             : CreatorTile(
                 creator: creator,
                 onCreatorSelected: onSelected,
+                recommendationFandoms: recommendation.matchingFandoms,
               );
       }
       currentIndex += recommendations.length;
-    }
-
-    // Favorites section
-    if (favorites.isNotEmpty) {
-      if (index == currentIndex) {
-        return _FavoritesSectionHeader(
-            onShouldHideListScreen: onShouldHideListScreen);
-      }
-      currentIndex++;
-
-      // Check if we're in the favorites range
-      final favoriteIndex = index - currentIndex;
-      if (favoriteIndex >= 0 && favoriteIndex < favorites.length) {
-        return useCardView
-            ? CreatorTileCard(
-                creator: favorites[favoriteIndex],
-                onCreatorSelected: widget.onCreatorSelected)
-            : CreatorTile(
-                creator: favorites[favoriteIndex],
-                onCreatorSelected: widget.onCreatorSelected);
-      }
-      currentIndex += favorites.length;
-
-      // Share Favorites button
-      if (index == currentIndex) {
-        return const _ShareFavorites();
-      }
-      currentIndex++;
     }
 
     // All creators section
