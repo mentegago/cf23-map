@@ -6,11 +6,8 @@ import 'creator_avatar.dart';
 import 'sample_works_gallery.dart';
 
 class CreatorTile extends StatefulWidget {
-  const CreatorTile({
-    super.key,
-    required this.creator,
-    required this.onCreatorSelected
-  });
+  const CreatorTile(
+      {super.key, required this.creator, required this.onCreatorSelected});
 
   final Creator creator;
   final Function(Creator) onCreatorSelected;
@@ -27,7 +24,7 @@ class _CreatorTileState extends State<CreatorTile> {
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
-    
+
     if (!_isHovered) {
       setState(() {
         _isHovered = true;
@@ -40,7 +37,7 @@ class _CreatorTileState extends State<CreatorTile> {
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
-    
+
     if (_isHovered) {
       setState(() {
         _isHovered = false;
@@ -51,32 +48,39 @@ class _CreatorTileState extends State<CreatorTile> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onHover: _handleHover,
       onExit: _handleExit,
       child: Container(
-        color: _isHovered 
-          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)
-          : Colors.transparent,
+        color: _isHovered
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)
+            : Colors.transparent,
         child: ListTile(
           leading: CreatorAvatar(creator: widget.creator),
-          trailing: widget.creator.sampleworksImages.isNotEmpty 
-            ? IconButton(
-              icon: widget.creator.sampleworksImages.length > 1 ? const Icon(Icons.photo_library) : const Icon(Icons.photo),
-              onPressed: () {
-                showSampleWorksGallery(context: context, imageUrls: widget.creator.sampleworksImages);
-              },
-            ) 
-            : null,
+          trailing: widget.creator.sampleworksImages.isNotEmpty
+              ? IconButton(
+                  icon: widget.creator.sampleworksImages.length > 1
+                      ? const Icon(Icons.photo_library)
+                      : const Icon(Icons.photo),
+                  onPressed: () {
+                    showSampleWorksGallery(
+                      context: context,
+                      imageUrls: widget.creator.sampleworksImages,
+                      creator: widget.creator,
+                    );
+                  },
+                )
+              : null,
           title: Text(
             widget.creator.name,
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           subtitle: Text(
             '${widget.creator.boothsDisplay} • ${widget.creator.dayDisplay}',
-            style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+            style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           onTap: () => widget.onCreatorSelected(widget.creator),
         ),

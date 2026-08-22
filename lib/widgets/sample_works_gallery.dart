@@ -3,13 +3,21 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import 'package:provider/provider.dart';
+
+import '../models/creator.dart';
+import '../services/recommendation_service.dart';
 
 /// Shows a responsive gallery dialog for sample works images
 Future<void> showSampleWorksGallery({
   required BuildContext context,
   required List<String> imageUrls,
+  Creator? creator,
   int initialIndex = 0,
 }) {
+  if (creator != null) {
+    context.read<RecommendationService>().recordSampleWorksViewed(creator);
+  }
   return showDialog(
     context: context,
     barrierColor: Colors.black87,
@@ -20,11 +28,10 @@ Future<void> showSampleWorksGallery({
         builder: (context, constraints) {
           // Responsive sizing: full screen on mobile, constrained on desktop
           final isWideScreen = constraints.maxWidth > 600;
-          final dialogWidth = isWideScreen 
-              ? constraints.maxWidth * 0.9 
-              : constraints.maxWidth;
-          final dialogHeight = isWideScreen 
-              ? constraints.maxHeight * 0.9 
+          final dialogWidth =
+              isWideScreen ? constraints.maxWidth * 0.9 : constraints.maxWidth;
+          final dialogHeight = isWideScreen
+              ? constraints.maxHeight * 0.9
               : constraints.maxHeight;
 
           return Center(
@@ -71,7 +78,7 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
-    
+
     // Initialize controllers for all pages
     for (int i = 0; i < widget.imageUrls.length; i++) {
       _controllers[i] = PhotoViewController();
@@ -87,7 +94,9 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
       try {
         if (!context.mounted) break;
         await precacheImage(CachedNetworkImageProvider(imageUrl), context);
-      } catch (e) { continue; }
+      } catch (e) {
+        continue;
+      }
     }
   }
 
@@ -104,7 +113,7 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
     setState(() {
       _currentIndex = index;
     });
-    
+
     // Reset zoom and pan by recreating the controller
     final controller = _controllers[index];
     if (controller != null) {
@@ -143,9 +152,11 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
               if (controller != null && controller.scale != null) {
                 final currentScale = controller.scale!;
                 // Scroll down (dy > 0) = zoom out, scroll up (dy < 0) = zoom in
-                final double scaleChange = event.scrollDelta.dy > 0 ? -0.1 : 0.1;
-                final double newScale = (currentScale + scaleChange).clamp(0.3, 4.0);
-                
+                final double scaleChange =
+                    event.scrollDelta.dy > 0 ? -0.1 : 0.1;
+                final double newScale =
+                    (currentScale + scaleChange).clamp(0.3, 4.0);
+
                 // Preserve the current pan position by adjusting it proportionally
                 final currentPosition = controller.position;
                 // Adjust position to keep the same visible area centered
@@ -155,7 +166,7 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
                   currentPosition.dy * scaleRatio,
                 );
                 controller.position = newPosition;
-                              
+
                 controller.scale = newScale;
               }
             }
@@ -165,7 +176,8 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
             builder: (BuildContext context, int index) {
               final controller = _controllers[index] ?? PhotoViewController();
               return PhotoViewGalleryPageOptions(
-                imageProvider: CachedNetworkImageProvider(widget.imageUrls[index]),
+                imageProvider:
+                    CachedNetworkImageProvider(widget.imageUrls[index]),
                 controller: controller,
                 initialScale: PhotoViewComputedScale.contained,
                 minScale: PhotoViewComputedScale.contained,
@@ -183,7 +195,8 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
                 child: CircularProgressIndicator(
                   value: event == null
                       ? 0
-                      : event.cumulativeBytesLoaded / (event.expectedTotalBytes ?? 1),
+                      : event.cumulativeBytesLoaded /
+                          (event.expectedTotalBytes ?? 1),
                   color: Colors.white,
                 ),
               ),
@@ -261,7 +274,8 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.chevron_left, color: Colors.white),
+                            icon: const Icon(Icons.chevron_left,
+                                color: Colors.white),
                             iconSize: 32,
                             tooltip: 'Previous',
                             onPressed: _goToPrevious,
@@ -283,7 +297,8 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.chevron_right, color: Colors.white),
+                            icon: const Icon(Icons.chevron_right,
+                                color: Colors.white),
                             iconSize: 32,
                             tooltip: 'Next',
                             onPressed: _goToNext,

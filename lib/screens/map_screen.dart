@@ -9,6 +9,8 @@ import '../utils/int_encoding.dart';
 import '../widgets/mobile/creator_selector_sheet.dart';
 import '../models/map_cell.dart';
 import '../models/creator.dart';
+import '../models/recommendation.dart';
+import '../services/recommendation_service.dart';
 import 'map_screen_desktop.dart';
 import 'map_screen_mobile.dart';
 import 'dart:async';
@@ -70,6 +72,13 @@ class _MapScreenState extends State<MapScreen> {
 
   void _handleCreatorSelected(Creator creator,
       {required String source, String searchQuery = ''}) {
+    context.read<RecommendationService>().recordCreatorOpened(
+          creator,
+          creatorSelectionSourceFromString(
+            source,
+            searchQuery: searchQuery,
+          ),
+        );
     umami.trackEvent(
       name: 'creator_selected',
       data: {

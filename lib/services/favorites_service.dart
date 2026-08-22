@@ -16,7 +16,7 @@ class FavoritesService extends ChangeNotifier {
 
   // Local state for fast synchronous access
   final Set<int> _favoriteIds = <int>{};
-  
+
   // Debounce timer for storage updates
   Timer? _storageUpdateTimer;
   static const Duration _debounceDelay = Duration(milliseconds: 500);
@@ -33,8 +33,9 @@ class FavoritesService extends ChangeNotifier {
         favoriteCreators.add(creator);
       }
     }
-    
-    return favoriteCreators.sorted((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    return favoriteCreators
+        .sorted((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
   // Synchronous methods for fast access
@@ -75,8 +76,7 @@ class FavoritesService extends ChangeNotifier {
   /// Get the shareable URL for favorites
   String getShareableUrl() {
     final listCode = IntEncoding.intsToStringCode(
-      favorites.map((creator) => creator.id).toList()
-    );
+        favorites.map((creator) => creator.id).toList());
     return UrlEncoding.toUrl({'list': listCode});
   }
 
@@ -92,12 +92,10 @@ class FavoritesService extends ChangeNotifier {
   Future<void> _updateStorage() async {
     await _initPrefs();
     if (_prefs == null) return;
-    
+
     try {
       await _prefs!.setStringList(
-        _favoritesIdsKey, 
-        _favoriteIds.map((id) => id.toString()).toList()
-      );
+          _favoritesIdsKey, _favoriteIds.map((id) => id.toString()).toList());
     } catch (e) {
       if (kDebugMode) {
         print('Failed to save favorite IDs: $e');
@@ -124,10 +122,10 @@ class FavoritesService extends ChangeNotifier {
   /// Migrate old favorites (full Creator objects) to new ID-based system
   Future<void> _migrateFavoritesIfNeeded() async {
     if (_prefs == null) return;
-    
+
     final migrated = _prefs!.getBool(_migrationKey) ?? false;
     if (migrated) return;
-    
+
     try {
       final oldFavoritesJson = _prefs!.getStringList(_favoritesKey) ?? [];
       if (oldFavoritesJson.isNotEmpty) {
@@ -146,22 +144,23 @@ class FavoritesService extends ChangeNotifier {
             }
           }
         }
-        
+
         // Save new ID-based favorites
         if (favoriteIds.isNotEmpty) {
-          await _prefs!.setStringList(_favoritesIdsKey, favoriteIds.map((id) => id.toString()).toList());
+          await _prefs!.setStringList(_favoritesIdsKey,
+              favoriteIds.map((id) => id.toString()).toList());
           if (kDebugMode) {
-            print('Migrated ${favoriteIds.length} favorites to ID-based system');
+            print(
+                'Migrated ${favoriteIds.length} favorites to ID-based system');
           }
         }
       }
-      
+
       // Mark migration as complete
       await _prefs!.setBool(_migrationKey, true);
-      
+
       // Clean up old favorites data
       await _prefs!.remove(_favoritesKey);
-      
     } catch (e) {
       if (kDebugMode) {
         print('Migration failed: $e');
@@ -169,17 +168,19 @@ class FavoritesService extends ChangeNotifier {
     }
   }
 
-
   /// Get favorite creator IDs
   Future<List<int>> _getFavoriteIds() async {
     await _initPrefs();
-    
+
     if (_prefs == null) {
       return [];
     }
-    
+
     final idsJson = _prefs!.getStringList(_favoritesIdsKey) ?? [];
-    return idsJson.map((idString) => int.tryParse(idString)).whereType<int>().toList();
+    return idsJson
+        .map((idString) => int.tryParse(idString))
+        .whereType<int>()
+        .toList();
   }
 
   @override
@@ -205,15 +206,16 @@ class FavoritesService extends ChangeNotifier {
   /// Initialize and check storage availability
   Future<void> initialize() async {
     await _initPrefs();
-    
+
     // Load favorites from storage into local state
     final favoriteIds = await _getFavoriteIds();
     _favoriteIds.clear();
     _favoriteIds.addAll(favoriteIds);
-    
+    notifyListeners();
+
     if (kDebugMode) {
-      print('FavoritesService: $storageStatus, loaded ${_favoriteIds.length} favorites');
+      print(
+          'FavoritesService: $storageStatus, loaded ${_favoriteIds.length} favorites');
     }
   }
 }
-

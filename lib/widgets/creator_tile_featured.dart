@@ -6,11 +6,8 @@ import '../models/creator.dart';
 import 'sample_works_gallery.dart';
 
 class CreatorTileFeatured extends StatefulWidget {
-  const CreatorTileFeatured({
-    super.key,
-    required this.creator,
-    required this.onCreatorSelected
-  });
+  const CreatorTileFeatured(
+      {super.key, required this.creator, required this.onCreatorSelected});
 
   final Creator creator;
   final Function(Creator) onCreatorSelected;
@@ -27,7 +24,7 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
-    
+
     if (!_isHovered) {
       setState(() {
         _isHovered = true;
@@ -40,7 +37,7 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
-    
+
     if (_isHovered) {
       setState(() {
         _isHovered = false;
@@ -53,7 +50,8 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
     final theme = Theme.of(context);
 
     // Use a static color for the featured creator tile.
-    const Color staticFeaturedColor = Color.fromARGB(255, 25, 210, 40); // blue 700
+    const Color staticFeaturedColor =
+        Color.fromARGB(255, 25, 210, 40); // blue 700
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,9 +76,10 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
               ),
             ),
             child: Container(
-              color: _isHovered 
-                ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
-                : Colors.transparent,
+              color: _isHovered
+                  ? theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.2)
+                  : Colors.transparent,
               child: ListTile(
                 leading: CreatorAvatar(creator: widget.creator),
                 title: Text(
@@ -89,16 +88,24 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
                 ),
                 subtitle: Text(
                   '${widget.creator.boothsDisplay} • ${widget.creator.dayDisplay}',
-                  style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                  style: TextStyle(
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
-                trailing: widget.creator.sampleworksImages.isNotEmpty 
-                  ? IconButton(
-                    icon: widget.creator.sampleworksImages.length > 1 ? const Icon(Icons.photo_library) : const Icon(Icons.photo),
-                    onPressed: () {
-                      showSampleWorksGallery(context: context, imageUrls: widget.creator.sampleworksImages);
-                    },
-                  ) 
-                  : null,
+                trailing: widget.creator.sampleworksImages.isNotEmpty
+                    ? IconButton(
+                        icon: widget.creator.sampleworksImages.length > 1
+                            ? const Icon(Icons.photo_library)
+                            : const Icon(Icons.photo),
+                        onPressed: () {
+                          showSampleWorksGallery(
+                            context: context,
+                            imageUrls: widget.creator.sampleworksImages,
+                            creator: widget.creator,
+                          );
+                        },
+                      )
+                    : null,
                 onTap: () => widget.onCreatorSelected(widget.creator),
               ),
             ),

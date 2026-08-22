@@ -6,11 +6,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'sample_works_gallery.dart';
 
 class CreatorTileCard extends StatefulWidget {
-  const CreatorTileCard({
-    super.key,
-    required this.creator,
-    required this.onCreatorSelected
-  });
+  const CreatorTileCard(
+      {super.key, required this.creator, required this.onCreatorSelected});
 
   final Creator creator;
   final Function(Creator) onCreatorSelected;
@@ -27,7 +24,7 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
-    
+
     if (!_isHovered) {
       setState(() {
         _isHovered = true;
@@ -40,7 +37,7 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
-    
+
     if (_isHovered) {
       setState(() {
         _isHovered = false;
@@ -51,7 +48,7 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onHover: _handleHover,
@@ -90,89 +87,103 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
                       child: Transform.scale(
                         scale: 1.3,
                         child: CachedNetworkImage(
-                          imageUrl: widget.creator.circleCut ?? '',
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: _getSectionColor(_getBoothSection(widget.creator)),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: _getSectionColor(_getBoothSection(widget.creator)),
-                          )
-                        ),
+                            imageUrl: widget.creator.circleCut ?? '',
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                                  color: _getSectionColor(
+                                      _getBoothSection(widget.creator)),
+                                ),
+                            errorWidget: (context, url, error) => Container(
+                                  color: _getSectionColor(
+                                      _getBoothSection(widget.creator)),
+                                )),
                       ),
                     ),
                   ),
                 ),
                 SizedBox(
-                    width: double.infinity,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.creator.name,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.creator.name,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    Text(
-                                      widget.creator.boothsDisplay,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    widget.creator.boothsDisplay,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.7),
                                     ),
-                                  ],
-                                ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              if (widget.creator.sampleworksImages.isNotEmpty)
-                                IconButton(
-                                  icon: widget.creator.sampleworksImages.length > 1 ? const Icon(Icons.photo_library) : const Icon(Icons.photo),
-                                  onPressed: () {
-                                    showSampleWorksGallery(context: context, imageUrls: widget.creator.sampleworksImages);
-                                  },
+                            ),
+                            if (widget.creator.sampleworksImages.isNotEmpty)
+                              IconButton(
+                                icon:
+                                    widget.creator.sampleworksImages.length > 1
+                                        ? const Icon(Icons.photo_library)
+                                        : const Icon(Icons.photo),
+                                onPressed: () {
+                                  showSampleWorksGallery(
+                                    context: context,
+                                    imageUrls: widget.creator.sampleworksImages,
+                                    creator: widget.creator,
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                      // Horizontal scrolling fandoms
+                      if (widget.creator.fandoms.isNotEmpty)
+                        Container(
+                          height: 32,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: widget.creator.fandoms.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: 6),
+                            itemBuilder: (context, index) {
+                              final fandom = widget.creator.fandoms[index];
+                              return Chip(
+                                label: Text(
+                                  fandom,
+                                  style: theme.textTheme.labelSmall,
                                 ),
-                            ],
+                                backgroundColor:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                side: BorderSide(
+                                  color: theme.colorScheme.outline
+                                      .withValues(alpha: 0.2),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                              );
+                            },
                           ),
                         ),
-                        // Horizontal scrolling fandoms
-                        if (widget.creator.fandoms.isNotEmpty)
-                          Container(
-                            height: 32,
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              scrollDirection: Axis.horizontal,
-                              itemCount: widget.creator.fandoms.length,
-                              separatorBuilder: (context, index) => const SizedBox(width: 6),
-                              itemBuilder: (context, index) {
-                                final fandom = widget.creator.fandoms[index];
-                                return Chip(
-                                  label: Text(
-                                    fandom,
-                                    style: theme.textTheme.labelSmall,
-                                  ),
-                                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                                  side: BorderSide(
-                                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                                );
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -189,7 +200,9 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
     if (hyphen > 0) {
       return firstBooth.substring(0, hyphen).toUpperCase();
     }
-    return firstBooth.isNotEmpty ? firstBooth.substring(0, 1).toUpperCase() : '?';
+    return firstBooth.isNotEmpty
+        ? firstBooth.substring(0, 1).toUpperCase()
+        : '?';
   }
 
   Color _getSectionColor(String section) {

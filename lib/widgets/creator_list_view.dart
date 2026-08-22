@@ -12,7 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/creator.dart';
+import '../models/recommendation.dart';
 import '../services/analytics_service.dart';
+import '../services/recommendation_service.dart';
 import '../services/settings_provider.dart';
 import '../utils/fuzzy_score.dart';
 import '../utils/string_utils.dart';
@@ -21,6 +23,7 @@ class CreatorListView extends StatefulWidget {
   final List<Creator> creators;
   final String searchQuery;
   final Function(Creator) onCreatorSelected;
+  final Function(Creator)? onRecommendationSelected;
   final ScrollController? scrollController;
   final VoidCallback onShouldHideListScreen;
   final VoidCallback? onClearSearch;
@@ -31,6 +34,7 @@ class CreatorListView extends StatefulWidget {
     required this.creators,
     required this.searchQuery,
     required this.onCreatorSelected,
+    this.onRecommendationSelected,
     required this.onShouldHideListScreen,
     this.scrollController,
     this.onClearSearch,
@@ -283,6 +287,11 @@ class _CreatorListViewState extends State<CreatorListView> {
     super.initState();
     // Pre-compute fandom counts when widget is first created
     _computeFandomCounts();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<RecommendationService>().startNewRecommendationSession();
+      }
+    });
   }
 
   @override
@@ -294,6 +303,15 @@ class _CreatorListViewState extends State<CreatorListView> {
     if (oldWidget.searchQuery != widget.searchQuery) {
       if (widget.searchQuery != _lastSelectedFandom) {
         _lastSelectedFandom = null;
+      }
+      if (oldWidget.searchQuery.isNotEmpty && widget.searchQuery.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context
+                .read<RecommendationService>()
+                .startNewRecommendationSession();
+          }
+        });
       }
     }
 
@@ -389,6 +407,9 @@ class _CreatorListViewState extends State<CreatorListView> {
           return _FandomSuggestions(
             suggestions: fandomSuggestions,
             onSuggestionSelected: (fandom) {
+              context
+                  .read<RecommendationService>()
+                  .recordFandomInterest(fandom);
               setState(() {
                 _lastSelectedFandom = fandom;
               });
@@ -464,6 +485,15 @@ class _CreatorListViewState extends State<CreatorListView> {
         ? []
         : context.select(
             (FavoritesService favoritesService) => favoritesService.favorites);
+    final recommendationService = context.watch<RecommendationService>();
+    final creatorDataProvider = context.read<CreatorDataProvider>();
+    final recommendations = isCreatorCustomListMode
+        ? const <RecommendationResult>[]
+        : recommendationService.recommendationsFor(
+            creators: widget.creators,
+            favoriteIds: favorites.map((creator) => creator.id).toSet(),
+            coldStartFandoms: creatorDataProvider.popularSearches,
+          );
     final fandomSuggestions = _fandomSuggestions;
     final hasFandomSuggestions =
         fandomSuggestions.isNotEmpty && _lastSelectedFandom == null;
@@ -476,8 +506,10 @@ class _CreatorListViewState extends State<CreatorListView> {
       itemCount += 1;
     }
 
-    // Featured section: header + featured creator
-    itemCount += 2;
+    // Personalized recommendations: header + creators.
+    if (recommendations.isNotEmpty) {
+      itemCount += 1 + recommendations.length;
+    }
 
     // Favorites section: header + favorites + share button (if any and storage is available)
     if (favorites.isNotEmpty) {
@@ -489,6 +521,9 @@ class _CreatorListViewState extends State<CreatorListView> {
 
     if (isCreatorCustomListMode) {
       itemCount += 1;
+      if (showAddAllToFavorites) {
+        itemCount += 1;
+      }
     }
 
     return ListView.builder(
@@ -499,6 +534,7 @@ class _CreatorListViewState extends State<CreatorListView> {
             index,
             theme,
             favorites,
+            recommendations,
             isCreatorCustomListMode,
             useCardView,
             showAddAllToFavorites,
@@ -512,6 +548,7 @@ class _CreatorListViewState extends State<CreatorListView> {
     int index,
     ThemeData theme,
     List<Creator> favorites,
+    List<RecommendationResult> recommendations,
     bool isCreatorCustomListMode,
     bool useCardView,
     bool showAddAllToFavorites,
@@ -529,6 +566,7 @@ class _CreatorListViewState extends State<CreatorListView> {
         return _FandomSuggestions(
           suggestions: fandomSuggestions,
           onSuggestionSelected: (fandom) {
+            context.read<RecommendationService>().recordFandomInterest(fandom);
             setState(() {
               _lastSelectedFandom = fandom;
             });
@@ -539,44 +577,47 @@ class _CreatorListViewState extends State<CreatorListView> {
       currentIndex++;
     }
 
-    // Featured section
-    if (index == currentIndex) {
-      if (isCreatorCustomListMode) {
+    if (isCreatorCustomListMode) {
+      if (index == currentIndex) {
         return _SeeAllCreatorsButton(
             onShouldHideListScreen: onShouldHideListScreen);
       }
-      // No Featured Booth this time :(
-      // else {
-      //   return Padding(
-      //     padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
-      //     child: Text(
-      //       'Check us out~',
-      //       style: TextStyle(
-      //         fontSize: 12,
-      //         fontWeight: FontWeight.w600,
-      //         color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-      //         letterSpacing: 0.5,
-      //       ),
-      //     ),
-      //   );
-      // }
-    }
-    currentIndex++;
-
-    if (index == currentIndex) {
-      if (isCreatorCustomListMode) {
-        return const SizedBox.shrink();
+      currentIndex++;
+    } else if (recommendations.isNotEmpty) {
+      if (index == currentIndex) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            'Creators you may like',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              letterSpacing: 0.5,
+            ),
+          ),
+        );
       }
+      currentIndex++;
 
-      final featuredCreator =
-          widget.creators.firstWhereOrNull((c) => c.id == 5450);
-      return featuredCreator != null
-          ? CreatorTile(
-              creator: featuredCreator,
-              onCreatorSelected: widget.onCreatorSelected)
-          : const SizedBox.shrink();
+      final recommendationIndex = index - currentIndex;
+      if (recommendationIndex >= 0 &&
+          recommendationIndex < recommendations.length) {
+        final creator = recommendations[recommendationIndex].creator;
+        final onSelected =
+            widget.onRecommendationSelected ?? widget.onCreatorSelected;
+        return useCardView
+            ? CreatorTileCard(
+                creator: creator,
+                onCreatorSelected: onSelected,
+              )
+            : CreatorTile(
+                creator: creator,
+                onCreatorSelected: onSelected,
+              );
+      }
+      currentIndex += recommendations.length;
     }
-    currentIndex++;
 
     // Favorites section
     if (favorites.isNotEmpty) {
@@ -611,7 +652,9 @@ class _CreatorListViewState extends State<CreatorListView> {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Text(
-          isCreatorCustomListMode ? 'Custom Creators List' : 'All Comifuro 23 Creators',
+          isCreatorCustomListMode
+              ? 'Custom Creators List'
+              : 'All Comifuro 23 Creators',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -623,12 +666,12 @@ class _CreatorListViewState extends State<CreatorListView> {
     }
     currentIndex++;
 
-    if (index == currentIndex &&
-        isCreatorCustomListMode &&
-        showAddAllToFavorites) {
-      return _AddAllToFavoritesButton(filteredCreators: _filteredCreators);
+    if (isCreatorCustomListMode && showAddAllToFavorites) {
+      if (index == currentIndex) {
+        return _AddAllToFavoritesButton(filteredCreators: _filteredCreators);
+      }
+      currentIndex++;
     }
-    currentIndex++;
 
     // All creators items
     final creatorIndex = index - currentIndex;

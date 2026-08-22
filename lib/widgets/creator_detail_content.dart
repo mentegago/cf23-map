@@ -4,8 +4,10 @@ import 'package:cf_map_flutter/widgets/sample_works_gallery.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/creator.dart';
 import '../services/analytics_service.dart';
+import '../services/recommendation_service.dart';
 import '../utils/url_encoding.dart';
 
 class CreatorDetailContent extends StatefulWidget {
@@ -116,6 +118,9 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                           'link_url': link.url,
                         },
                       );
+                      context
+                          .read<RecommendationService>()
+                          .recordExternalLinkOpened(widget.creator);
                       try {
                         launchUrl(Uri.parse(link.url),
                             mode: LaunchMode.externalApplication);
@@ -157,6 +162,9 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         'fandom': fandom,
                       },
                     );
+                    context
+                        .read<RecommendationService>()
+                        .recordFandomInterest(fandom);
                     widget.onRequestSearch(fandom);
                   },
                   backgroundColor: theme.colorScheme.primaryContainer,
@@ -374,6 +382,9 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                               'creator_name': widget.creator.name,
                             },
                           );
+                          context
+                              .read<RecommendationService>()
+                              .recordExternalLinkOpened(widget.creator);
                           final url =
                               'https://catalog.comifuro.net/circle/${widget.creator.id}';
                           launchUrl(Uri.parse(url),
@@ -405,6 +416,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                           showSampleWorksGallery(
                             context: context,
                             imageUrls: widget.creator.sampleworksImages,
+                            creator: widget.creator,
                           );
                         },
                       ),
@@ -449,6 +461,11 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
       final shareUrl = UrlEncoding.toUrl({'creator_id': widget.creator.id});
 
       await Clipboard.setData(ClipboardData(text: shareUrl));
+      if (context.mounted) {
+        context
+            .read<RecommendationService>()
+            .recordCreatorShared(widget.creator);
+      }
 
       if (!context.mounted) return;
 
