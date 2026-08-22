@@ -7,6 +7,7 @@ import '../widgets/fab_button.dart';
 import '../widgets/map_viewer.dart';
 import '../widgets/mobile/creator_detail_sheet.dart';
 import '../widgets/mobile/expandable_search.dart';
+import '../widgets/mobile/mobile_sheet_detent.dart';
 import '../widgets/version_notification.dart';
 
 class MapScreenMobileView extends StatefulWidget {
@@ -14,7 +15,8 @@ class MapScreenMobileView extends StatefulWidget {
   final int rows;
   final int cols;
   final Future<void> Function() onClearSelection;
-  final void Function(Creator, {required String source, String searchQuery}) onCreatorSelected;
+  final void Function(Creator, {required String source, String searchQuery})
+      onCreatorSelected;
   final void Function(String?) onBoothTap;
 
   const MapScreenMobileView({
@@ -31,13 +33,21 @@ class MapScreenMobileView extends StatefulWidget {
   State<MapScreenMobileView> createState() => _MapScreenMobileViewState();
 }
 
-class _MapScreenMobileViewState extends State<MapScreenMobileView> with SingleTickerProviderStateMixin {
+class _MapScreenMobileViewState extends State<MapScreenMobileView>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _detailAnimationController;
   late final Animation<Offset> _detailSlideAnimation;
-  final GlobalKey<ExpandableSearchState> _expandableSearchKey = GlobalKey<ExpandableSearchState>();
+  final GlobalKey<ExpandableSearchState> _expandableSearchKey =
+      GlobalKey<ExpandableSearchState>();
+  final DraggableScrollableController _detailSheetController =
+      DraggableScrollableController();
   Creator? _visibleCreator;
   int? _lastCreatorId;
   bool _isAnimatingOut = false;
+  bool _isPresentingDetail = false;
+  bool _isDetailVisible = false;
+  bool _isMainSheetVisible = true;
+  MobileSheetDetent _rememberedMainDetent = MobileSheetDetent.collapsed;
 
   @override
   void initState() {
@@ -61,14 +71,17 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView> with SingleTi
   @override
   void dispose() {
     _detailAnimationController.dispose();
+    _detailSheetController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final creators = context.select((CreatorDataProvider p) => p.creators);
-    final selectedCreator = context.select((CreatorDataProvider p) => p.selectedCreator);
-    final isCreatorCustomListMode = context.select((CreatorDataProvider p) => p.isCreatorCustomListMode);
+    final selectedCreator =
+        context.select((CreatorDataProvider p) => p.selectedCreator);
+    final isCreatorCustomListMode =
+        context.select((CreatorDataProvider p) => p.isCreatorCustomListMode);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncVisibleCreator(selectedCreator);
@@ -94,7 +107,8 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView> with SingleTi
               borderRadius: BorderRadius.circular(20),
               clipBehavior: Clip.antiAlias,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -109,7 +123,8 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView> with SingleTi
                     Text(
                       "Only the creators selected by the list owner are shown on the map. Tap the search box above to see the creator list.",
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
@@ -118,67 +133,87 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView> with SingleTi
             ),
           ),
         const VersionNotification(isDesktop: false),
-        if (_visibleCreator != null)
+        if (creators != null)
+          Visibility(
+            visible: _isMainSheetVisible,
+            maintainState: true,
+            maintainAnimation: true,
+            maintainSize: true,
+            child: ExpandableSearch(
+              key: _expandableSearchKey,
+              creators: creators,
+              onCreatorSelected: widget.onCreatorSelected,
+              selectedCreator: selectedCreator,
+            ),
+          ),
+        if (_visibleCreator != null && _isDetailVisible)
           SlideTransition(
             position: _detailSlideAnimation,
             child: CreatorDetailSheet(
               creator: _visibleCreator!,
+              controller: _detailSheetController,
               onClose: _dismissDetail,
               onRequestSearch: _handleRequestSearch,
             ),
-          ),
-        if (creators != null)
-          ExpandableSearch(
-            key: _expandableSearchKey,
-            creators: creators,
-            onCreatorSelected: widget.onCreatorSelected,
-            onClear: selectedCreator != null ? _dismissDetail : null,
-            selectedCreator: selectedCreator,
           ),
       ],
     );
   }
 
   void _handleRequestSearch(String query) {
+    _rememberedMainDetent = MobileSheetDetent.expanded;
     _expandableSearchKey.currentState?.performSearch(query);
   }
 
   void _syncVisibleCreator(Creator? selected) {
-    if (!mounted) return;
+    if (!mounted || _isAnimatingOut) return;
     final selectedId = selected?.id;
 
     if (selected != null) {
-      final isNewSelection = selectedId != _lastCreatorId || !identical(selected, _visibleCreator);
-      if (isNewSelection || _visibleCreator == null) {
+      final isNewSelection =
+          selectedId != _lastCreatorId || !identical(selected, _visibleCreator);
+      if (isNewSelection) {
         setState(() {
           _visibleCreator = selected;
           _lastCreatorId = selectedId;
         });
       }
-      if (_isAnimatingOut) {
-        _isAnimatingOut = false;
-      }
-      if (_detailAnimationController.status != AnimationStatus.forward && _detailAnimationController.value != 1.0) {
-        _detailAnimationController.forward();
+      if (!_isDetailVisible && !_isPresentingDetail) {
+        _presentDetail();
       }
     } else {
-      if (_visibleCreator != null && !_isAnimatingOut) {
-        _isAnimatingOut = true;
-        _detailAnimationController.reverse().whenCompleteOrCancel(() {
-          if (!mounted) return;
-          setState(() {
-            _visibleCreator = null;
-            _lastCreatorId = null;
-          });
-          _isAnimatingOut = false;
+      if (_visibleCreator != null && !_isDetailVisible) {
+        setState(() {
+          _visibleCreator = null;
+          _lastCreatorId = null;
         });
       }
     }
   }
 
-  void _dismissDetail() {
-    _expandableSearchKey.currentState?.expandIfSearching();
+  Future<void> _presentDetail() async {
+    _isPresentingDetail = true;
+    final mainSheet = _expandableSearchKey.currentState;
+    _rememberedMainDetent =
+        mainSheet?.currentDetent ?? MobileSheetDetent.collapsed;
 
+    if (_rememberedMainDetent.extent >
+        MobileSheetDetent.partiallyExpanded.extent) {
+      await mainSheet?.animateToDetent(
+        MobileSheetDetent.partiallyExpanded,
+      );
+    }
+    if (!mounted) return;
+
+    setState(() {
+      _isMainSheetVisible = false;
+      _isDetailVisible = true;
+    });
+    _detailAnimationController.forward(from: 0);
+    _isPresentingDetail = false;
+  }
+
+  void _dismissDetail() {
     if (_visibleCreator == null) {
       widget.onClearSelection();
       return;
@@ -186,16 +221,38 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView> with SingleTi
     if (_isAnimatingOut) return;
 
     _isAnimatingOut = true;
-    _detailAnimationController.reverse().whenCompleteOrCancel(() async {
-      if (!mounted) return;
-      setState(() {
-        _visibleCreator = null;
-        _lastCreatorId = null;
-      });
-      await widget.onClearSelection();
-      if (mounted) {
-        _isAnimatingOut = false;
-      }
+    _finishDismissingDetail();
+  }
+
+  Future<void> _finishDismissingDetail() async {
+    final mainSheet = _expandableSearchKey.currentState;
+    final detailExtent = _detailSheetController.isAttached
+        ? _detailSheetController.size
+        : MobileSheetDetent.partiallyExpanded.extent;
+
+    if (detailExtent < MobileSheetDetent.partiallyExpanded.extent - 0.01) {
+      mainSheet?.jumpToDetent(MobileSheetDetent.collapsed);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isMainSheetVisible = true;
     });
+
+    await Future.wait([
+      _detailAnimationController.reverse(),
+      if (mainSheet != null) mainSheet.animateToDetent(_rememberedMainDetent),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _visibleCreator = null;
+      _lastCreatorId = null;
+      _isDetailVisible = false;
+    });
+    await widget.onClearSelection();
+    if (mounted) {
+      _isAnimatingOut = false;
+    }
   }
 }

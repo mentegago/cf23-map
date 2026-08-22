@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
 import '../../models/creator.dart';
 import '../creator_detail_content.dart';
+import 'mobile_sheet_detent.dart';
 
 class CreatorDetailSheet extends StatelessWidget {
   final Creator creator;
   final VoidCallback onClose;
   final Function(String) onRequestSearch;
+  final DraggableScrollableController controller;
 
   const CreatorDetailSheet({
     super.key,
     required this.creator,
     required this.onClose,
     required this.onRequestSearch,
+    required this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return DraggableScrollableSheet(
-      initialChildSize: 0.35,
-      minChildSize: 0.25,
-      maxChildSize: 0.9,
+      controller: controller,
+      initialChildSize: MobileSheetDetent.partiallyExpanded.extent,
+      minChildSize: MobileSheetDetent.collapsed.extent,
+      maxChildSize: MobileSheetDetent.expanded.extent,
+      snap: true,
+      snapSizes: [MobileSheetDetent.partiallyExpanded.extent],
+      snapAnimationDuration: mobileSheetAnimationDuration,
+      shouldCloseOnMinExtent: false,
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
@@ -51,7 +59,7 @@ class CreatorDetailSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Content
               CreatorDetailContent(
                 creator: creator,
@@ -61,11 +69,10 @@ class CreatorDetailSheet extends StatelessWidget {
                 onClose: onClose,
                 onRequestSearch: onRequestSearch,
               ),
-              ],
-            ),
-          );
-        },
-      );
-    }
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
-
