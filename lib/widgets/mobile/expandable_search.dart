@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/analytics_service.dart';
 import '../../services/creator_data_service.dart';
+import '../../services/recommendation_service.dart';
 import '../../utils/int_encoding.dart';
 import '../creator_list_view.dart';
 
@@ -58,6 +59,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     _focusNode.addListener(() {
       if (mounted && !_isExpanded && _focusNode.hasFocus) {
         umami.trackEvent(name: 'search_bar_opened');
+        context.read<RecommendationService>().startNewRecommendationSession();
         setState(() {
           _isExpanded = true;
         });
@@ -105,6 +107,11 @@ class ExpandableSearchState extends State<ExpandableSearch> {
       source: 'list',
       searchQuery: _searchController.text,
     );
+  }
+
+  void _handleRecommendationTap(Creator creator) {
+    _collapse();
+    widget.onCreatorSelected(creator, source: 'recommendation');
   }
 
   void _handleClear() {
@@ -354,6 +361,8 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                               creators: widget.creators,
                               searchQuery: value.text,
                               onCreatorSelected: _handleCreatorTap,
+                              onRecommendationSelected:
+                                  _handleRecommendationTap,
                               scrollController: _searchScrollController,
                               onShouldHideListScreen: () {
                                 _collapse();

@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/analytics_service.dart';
 import '../services/creator_data_service.dart';
+import '../models/recommendation.dart';
+import '../services/recommendation_service.dart';
 
 class FABButton extends StatelessWidget {
   const FABButton({super.key, required this.isDesktop});
@@ -14,8 +16,9 @@ class FABButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final githubIcon = isDark ? 'assets/github-mark-white.svg' : 'assets/github-mark.svg';
-    
+    final githubIcon =
+        isDark ? 'assets/github-mark-white.svg' : 'assets/github-mark.svg';
+
     return Positioned(
       bottom: 16,
       left: isDesktop ? 16 : null,
@@ -32,75 +35,80 @@ class FABButton extends StatelessWidget {
 
   Container _randomButton(BuildContext context) {
     return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          final creator =
+              context.read<CreatorDataProvider>().selectRandomCreator();
+          if (creator != null) {
+            context.read<RecommendationService>().recordCreatorOpened(
+                  creator,
+                  CreatorSelectionSource.randomButton,
+                );
+            umami.trackEvent(
+              name: 'creator_selected',
+              data: {
+                'creator_id': creator.id.toString(),
+                'creator_name': creator.name,
+                'source': 'surprise_fab',
+              },
+            );
+          }
+        },
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            spacing: 8,
+            children: [
+              Icon(Icons.auto_awesome, size: 24),
+              Text("Surprise me!"),
             ],
           ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () {
-              final creator = context.read<CreatorDataProvider>().selectRandomCreator();
-              if (creator != null) {
-                umami.trackEvent(
-                  name: 'creator_selected',
-                  data: {
-                    'creator_id': creator.id.toString(),
-                    'creator_name': creator.name,
-                    'source': 'surprise_fab',
-                  },
-                );
-              }
-            },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Row(
-                spacing: 8,
-                children: [
-                  Icon(Icons.auto_awesome, size: 24),
-                  Text("Surprise me!"),
-                ],
-              ),
-            ),
-          ),
-        );
+        ),
+      ),
+    );
   }
 
   Container _githubButton(BuildContext context, String githubIcon) {
     return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () {
-              umami.trackEvent(name: 'github_tapped');
-              _launchGitHubUrl();
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: SvgPicture.asset(
-                githubIcon,
-                width: 24,
-                height: 24,
-              ),
-            ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          umami.trackEvent(name: 'github_tapped');
+          _launchGitHubUrl();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: SvgPicture.asset(
+            githubIcon,
+            width: 24,
+            height: 24,
           ),
-        );
+        ),
+      ),
+    );
   }
 
   Future<void> _launchGitHubUrl() async {

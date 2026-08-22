@@ -6,23 +6,44 @@ import 'screens/map_screen.dart';
 import 'services/analytics_service.dart';
 import 'services/favorites_service.dart';
 import 'services/creator_data_service.dart';
+import 'services/recommendation_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final disableRecommendations = _recommendationsDisabled(Uri.base);
   final creatorDataProvider = CreatorDataProvider()..initialize();
   final favoritesService = FavoritesService(creatorDataProvider)..initialize();
   final settingsProvider = SettingsProvider()..initialize();
+  final recommendationService = RecommendationService(
+    disabled: disableRecommendations,
+  )..initialize();
 
-  runApp(CFMapApp(creatorDataProvider: creatorDataProvider, favoritesService: favoritesService, settingsProvider: settingsProvider));
+  runApp(CFMapApp(
+    creatorDataProvider: creatorDataProvider,
+    favoritesService: favoritesService,
+    settingsProvider: settingsProvider,
+    recommendationService: recommendationService,
+  ));
+}
+
+bool _recommendationsDisabled(Uri uri) {
+  final value = uri.queryParameters['disable_recommendations']?.toLowerCase();
+  return value == '1' || value == 'true';
 }
 
 class CFMapApp extends StatelessWidget {
-
   final CreatorDataProvider creatorDataProvider;
   final FavoritesService favoritesService;
   final SettingsProvider settingsProvider;
-  const CFMapApp({super.key, required this.creatorDataProvider, required this.favoritesService, required this.settingsProvider});
+  final RecommendationService recommendationService;
+  const CFMapApp({
+    super.key,
+    required this.creatorDataProvider,
+    required this.favoritesService,
+    required this.settingsProvider,
+    required this.recommendationService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +57,9 @@ class CFMapApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (context) => settingsProvider,
+        ),
+        ChangeNotifierProvider(
+          create: (context) => recommendationService,
         ),
       ],
       child: MaterialApp(

@@ -3,6 +3,7 @@ import 'package:cf_map_flutter/services/analytics_service.dart';
 import 'package:cf_map_flutter/services/favorites_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/recommendation_service.dart';
 
 class FavoriteButton extends StatelessWidget {
   const FavoriteButton({
@@ -62,6 +63,9 @@ class FavoriteButton extends StatelessWidget {
         } else {
           context.read<FavoritesService>().addFavorite(creator.id);
         }
+        context
+            .read<RecommendationService>()
+            .recordFavoriteChanged(creator, !isFavorite);
       },
     );
   }
