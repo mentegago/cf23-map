@@ -47,7 +47,8 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView>
   bool _isPresentingDetail = false;
   bool _isDetailVisible = false;
   bool _isMainSheetVisible = true;
-  MobileSheetDetent _rememberedMainDetent = MobileSheetDetent.collapsed;
+  MobileSearchSheetDetent _rememberedMainDetent =
+      MobileSearchSheetDetent.collapsed;
 
   @override
   void initState() {
@@ -161,8 +162,9 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView>
   }
 
   void _handleRequestSearch(String query) {
-    _rememberedMainDetent = MobileSheetDetent.expanded;
+    _rememberedMainDetent = MobileSearchSheetDetent.expanded;
     _expandableSearchKey.currentState?.performSearch(query);
+    _dismissDetail();
   }
 
   void _syncVisibleCreator(Creator? selected) {
@@ -191,19 +193,15 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView>
     }
   }
 
-  Future<void> _presentDetail() async {
+  void _presentDetail() {
     _isPresentingDetail = true;
     final mainSheet = _expandableSearchKey.currentState;
     _rememberedMainDetent =
-        mainSheet?.currentDetent ?? MobileSheetDetent.collapsed;
+        mainSheet?.currentDetent ?? MobileSearchSheetDetent.collapsed;
 
-    if (_rememberedMainDetent.extent >
-        MobileSheetDetent.partiallyExpanded.extent) {
-      await mainSheet?.animateToDetent(
-        MobileSheetDetent.partiallyExpanded,
-      );
+    if (_rememberedMainDetent == MobileSearchSheetDetent.expanded) {
+      mainSheet?.resizeBehindDetail();
     }
-    if (!mounted) return;
 
     setState(() {
       _isMainSheetVisible = false;
@@ -231,7 +229,7 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView>
         : MobileSheetDetent.partiallyExpanded.extent;
 
     if (detailExtent < MobileSheetDetent.partiallyExpanded.extent - 0.01) {
-      mainSheet?.jumpToDetent(MobileSheetDetent.collapsed);
+      mainSheet?.jumpToDetent(MobileSearchSheetDetent.collapsed);
     }
 
     if (!mounted) return;

@@ -2,7 +2,7 @@ import 'package:cf_map_flutter/widgets/mobile/mobile_sheet_detent.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('mobile sheet extents are ordered', () {
+  test('creator detail sheet extents are ordered', () {
     expect(
       MobileSheetDetent.values.map((detent) => detent.extent),
       orderedEquals([0.28, 0.56, 0.94]),
@@ -21,6 +21,27 @@ void main() {
     expect(
       MobileSheetDetent.nearest(0.9),
       MobileSheetDetent.expanded,
+    );
+  });
+
+  test('search collapsed extent follows its header and safe area', () {
+    expect(
+      MobileSearchSheetLayout.collapsedExtent(
+        availableHeight: 844,
+        bottomSafeArea: 34,
+      ),
+      closeTo(0.197, 0.001),
+    );
+    expect(
+      MobileSearchSheetLayout.collapsedExtent(
+        availableHeight: 844,
+        bottomSafeArea: 0,
+      ),
+      closeTo(0.185, 0.001),
+    );
+    expect(
+      MobileSearchSheetLayout.effectiveBottomSafeArea(0),
+      MobileSearchSheetLayout.minimumBottomSafeArea,
     );
   });
 }
