@@ -98,15 +98,15 @@ class CreatorInteraction {
 }
 
 class RecommendationProfile {
-  static const int currentSchemaVersion = 1;
+  static const int currentSchemaVersion = 2;
 
   final int schemaVersion;
-  final Map<String, FandomSignal> explicitFandomSignals;
+  final Map<int, FandomSignal> explicitFandomSignals;
   final Map<int, CreatorInteraction> creatorInteractions;
 
   RecommendationProfile({
     this.schemaVersion = currentSchemaVersion,
-    Map<String, FandomSignal>? explicitFandomSignals,
+    Map<int, FandomSignal>? explicitFandomSignals,
     Map<int, CreatorInteraction>? creatorInteractions,
   })  : explicitFandomSignals = explicitFandomSignals ?? {},
         creatorInteractions = creatorInteractions ?? {};
@@ -121,7 +121,7 @@ class RecommendationProfile {
       explicitFandomSignals: rawFandoms is Map
           ? rawFandoms.map(
               (key, value) => MapEntry(
-                key.toString(),
+                int.parse(key.toString()),
                 FandomSignal.fromJson(
                   Map<String, dynamic>.from(value as Map),
                 ),
@@ -144,7 +144,7 @@ class RecommendationProfile {
   Map<String, dynamic> toJson() => {
         'schema_version': schemaVersion,
         'explicit_fandom_signals': explicitFandomSignals.map(
-          (key, value) => MapEntry(key, value.toJson()),
+          (key, value) => MapEntry(key.toString(), value.toJson()),
         ),
         'creator_interactions': creatorInteractions.map(
           (key, value) => MapEntry(key.toString(), value.toJson()),

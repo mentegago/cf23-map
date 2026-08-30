@@ -65,32 +65,8 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
 
           const SizedBox(height: 16),
 
-          // Informations
-          ...widget.creator.informations.map((info) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  info.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  info.content,
-                  style: TextStyle(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.8)),
-                ),
-                const SizedBox(height: 16),
-              ],
-            );
-          }),
-
           // URLs
-          if (widget.creator.urls.isNotEmpty) ...[
+          if (widget.creator.links.isNotEmpty) ...[
             const Text(
               'Links',
               style: TextStyle(
@@ -102,7 +78,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: widget.creator.urls.map((link) {
+              children: widget.creator.links.map((link) {
                 return Tooltip(
                   message: link.url,
                   child: ActionChip(
@@ -151,7 +127,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
               children: widget.creator.fandoms.map((fandom) {
                 return ActionChip(
                   avatar: const Icon(Icons.favorite, size: 18),
-                  label: Text(fandom),
+                  label: Text(fandom.name),
                   onPressed: () {
                     umami.trackEvent(
                       name: 'fandom_tapped',
@@ -159,13 +135,14 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         'creator_id': widget.creator.id.toString(),
                         'creator_name': widget.creator.name,
                         'source': 'creator_detail',
-                        'fandom': fandom,
+                        'fandom_id': fandom.id.toString(),
+                        'fandom': fandom.name,
                       },
                     );
                     context
                         .read<RecommendationService>()
-                        .recordFandomInterest(fandom);
-                    widget.onRequestSearch(fandom);
+                        .recordFandomInterest(fandom.id);
+                    widget.onRequestSearch(fandom.name);
                   },
                   backgroundColor: theme.colorScheme.primaryContainer,
                   side: BorderSide(color: theme.colorScheme.primary),
@@ -176,9 +153,9 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
           ],
 
           // Works Type
-          if (widget.creator.worksType.isNotEmpty) ...[
+          if (widget.creator.offerings.isNotEmpty) ...[
             Text(
-              'Works Type${widget.creator.worksType.length > 1 ? 's' : ''}',
+              'Works Type${widget.creator.offerings.length > 1 ? 's' : ''}',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -188,7 +165,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: widget.creator.worksType.map((worksType) {
+              children: widget.creator.offeringNames.map((worksType) {
                 return Chip(
                   avatar: Icon(Icons.sell,
                       size: 18, color: theme.colorScheme.primary),
@@ -391,13 +368,13 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                               mode: LaunchMode.externalApplication);
                         },
                       ),
-                    if (widget.creator.sampleworksImages.isNotEmpty)
+                    if (widget.creator.assets.gallery.isNotEmpty)
                       ElevatedButton.icon(
-                        icon: widget.creator.sampleworksImages.length > 1
+                        icon: widget.creator.assets.gallery.length > 1
                             ? const Icon(Icons.photo_library)
                             : const Icon(Icons.photo),
                         label: Text(
-                            'Samplework${widget.creator.sampleworksImages.length > 1 ? 's' : ''}'),
+                            'Samplework${widget.creator.assets.gallery.length > 1 ? 's' : ''}'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.primaryContainer,
                           foregroundColor: theme.colorScheme.onPrimaryContainer,
@@ -409,13 +386,13 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                             data: {
                               'creator_id': widget.creator.id.toString(),
                               'creator_name': widget.creator.name,
-                              'count': widget.creator.sampleworksImages.length
+                              'count': widget.creator.assets.gallery.length
                                   .toString(),
                             },
                           );
                           showSampleWorksGallery(
                             context: context,
-                            imageUrls: widget.creator.sampleworksImages,
+                            imageUrls: widget.creator.assets.gallery,
                             creator: widget.creator,
                           );
                         },
@@ -540,7 +517,7 @@ class _CircleCutState extends State<_CircleCut> {
                     scale: scale,
                     alignment: Alignment.bottomCenter,
                     child: CachedNetworkImage(
-                      imageUrl: widget.creator.circleCut ?? '',
+                      imageUrl: widget.creator.assets.thumbnail ?? '',
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
                         color:

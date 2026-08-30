@@ -1,12 +1,7 @@
-import 'dart:math';
-
 import 'package:cf_map_flutter/services/creator_data_service.dart';
 import 'package:cf_map_flutter/services/favorites_service.dart';
 import 'package:cf_map_flutter/widgets/creator_tile.dart';
 import 'package:cf_map_flutter/widgets/creator_tile_card.dart';
-import 'dart:html' as html;
-
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,8 +11,7 @@ import '../models/recommendation.dart';
 import '../services/analytics_service.dart';
 import '../services/recommendation_service.dart';
 import '../services/settings_provider.dart';
-import '../utils/fuzzy_score.dart';
-import '../utils/string_utils.dart';
+import '../utils/browser_navigation.dart';
 
 class CreatorListView extends StatefulWidget {
   final List<Creator> creators;
@@ -52,160 +46,10 @@ class CreatorListView extends StatefulWidget {
 class _CreatorListViewState extends State<CreatorListView> {
   List<Creator>? _cachedFilteredCreators;
   String? _lastSearchQuery;
-  List<String>? _cachedFandomSuggestions;
-  String? _lastFandomSearchQuery;
-  Map<String, int>? _fandomCounts;
   String? _lastSelectedFandom;
 
-  // Pre-calculate fandom popularity (count of creators per fandom)
-  void _computeFandomCounts() {
-    _fandomCounts = <String, int>{};
-    for (final creator in widget.creators) {
-      for (final fandom in creator.fandoms) {
-        _fandomCounts![fandom] = (_fandomCounts![fandom] ?? 0) + 1;
-      }
-    }
-  }
-
-  Map<String, int> get _fandomPopularity {
-    // This should never be null after initState, but provide fallback for safety
-    return _fandomCounts ?? <String, int>{};
-  }
-
-  // Extract unique fandoms from all creators
-  Set<String> get _allUniqueFandoms {
-    final fandoms = <String>{};
-    for (final creator in widget.creators) {
-      fandoms.addAll(creator.fandoms);
-    }
-    return fandoms;
-  }
-
-  // Get fandom suggestions based on search query
-  List<String> get _fandomSuggestions {
-    // If no search query, use popular_searches from data if available and not in custom list mode
-    if (widget.searchQuery.isEmpty) {
-      final creatorDataProvider = context.read<CreatorDataProvider>();
-      if (!creatorDataProvider.isCreatorCustomListMode &&
-          creatorDataProvider.popularSearches.isNotEmpty) {
-        return creatorDataProvider.popularSearches;
-      }
-
-      final allFandoms = _allUniqueFandoms
-          .map((fandom) => (fandom, _fandomPopularity[fandom] ?? 0))
-          .sorted((a, b) {
-            // Sort by popularity (descending)
-            final popularityCmp = b.$2.compareTo(a.$2);
-            if (popularityCmp != 0) return popularityCmp;
-            // Then alphabetically
-            return a.$1.toLowerCase().compareTo(b.$1.toLowerCase());
-          })
-          .take(20)
-          .map((result) => result.$1)
-          .toList();
-
-      _lastFandomSearchQuery = widget.searchQuery;
-      _cachedFandomSuggestions = allFandoms;
-
-      return allFandoms;
-    }
-
-    // Return cached results if search query hasn't changed
-    if (_lastFandomSearchQuery == widget.searchQuery &&
-        _cachedFandomSuggestions != null) {
-      return _cachedFandomSuggestions!;
-    }
-
-    // Update cache
-    _lastFandomSearchQuery = widget.searchQuery;
-
-    final trimmedQuery = widget.searchQuery.trim().toLowerCase();
-    final optimizedQuery = optimizeStringFormat(trimmedQuery);
-
-    final allFandoms = _allUniqueFandoms.toList();
-
-    // Find max popularity to normalize popularity scores
-    final maxPopularity = _fandomPopularity.values.isEmpty
-        ? 1
-        : _fandomPopularity.values.reduce((a, b) => a > b ? a : b);
-
-    final scoredFandoms = allFandoms
-        .map((fandom) {
-          var maxScore = -1.0;
-          var maxScoreStringScore = -1.0;
-
-          // Forward fandom check
-          final fandomScore = fuzzyScore(optimizedQuery, fandom.toLowerCase());
-          final fandomStringScore =
-              optimizedQuery.length / fandom.length.toDouble();
-
-          if (fandomScore.matched && fandomStringScore > maxScoreStringScore) {
-            maxScore = max(maxScore, fandomScore.score);
-            maxScoreStringScore = fandomStringScore;
-          }
-
-          // Reverse fandom check - Fuzzy search for fandoms that are similar to the query
-          final optimizedFandom = optimizeStringFormat(fandom);
-          if (optimizedFandom.isNotEmpty) {
-            final reverseFandomScore =
-                fuzzyScore(optimizedFandom, trimmedQuery);
-            final reverseFandomStringScore =
-                optimizedFandom.length / trimmedQuery.length.toDouble();
-
-            if (reverseFandomScore.matched &&
-                reverseFandomStringScore > maxScoreStringScore) {
-              maxScore = max(maxScore, reverseFandomScore.score);
-              maxScoreStringScore = reverseFandomStringScore;
-            }
-          }
-
-          if (maxScore < 0.7) return null;
-
-          // Get popularity count for this fandom
-          final popularity = _fandomPopularity[fandom] ?? 0;
-
-          // Normalize popularity to 0-1 scale
-          final normalizedPopularity =
-              maxPopularity > 0 ? popularity / maxPopularity : 0.0;
-
-          // Combine fuzzy score with popularity using weighted formula
-          // Weight: 50% fuzzy score, 50% popularity
-          // This ensures popular fandoms rank higher even with slightly lower fuzzy scores
-          // Popular fandoms get significant boost to surface the most relevant results
-          final combinedScore = (maxScore * 0.5) + (normalizedPopularity * 0.5);
-
-          return (
-            fandom,
-            maxScore,
-            maxScoreStringScore,
-            popularity,
-            combinedScore
-          );
-        })
-        .nonNulls
-        .sorted((a, b) {
-          // Primary sort: combined score (fuzzy score + popularity weighted)
-          final combinedCmp = b.$5.compareTo(a.$5);
-          if (combinedCmp != 0) return combinedCmp;
-
-          // Secondary sort: fuzzy score (higher is better)
-          final scoreCmp = b.$2.compareTo(a.$2);
-          if (scoreCmp != 0) return scoreCmp;
-
-          // Tertiary sort: popularity count (higher is better - more creators have this fandom)
-          final popularityCmp = b.$4.compareTo(a.$4);
-          if (popularityCmp != 0) return popularityCmp;
-
-          // Final sort: alphabetical
-          return a.$1.toLowerCase().compareTo(b.$1.toLowerCase());
-        })
-        .map((result) => result.$1)
-        .take(20) // Limit to top 5 matches
-        .toList();
-
-    _cachedFandomSuggestions = scoredFandoms;
-    return _cachedFandomSuggestions!;
-  }
+  List<String> get _fandomSuggestions =>
+      context.read<CreatorDataProvider>().fandomSuggestions(widget.searchQuery);
 
   List<Creator> get _filteredCreators {
     // Return cached results if search query hasn't changed
@@ -222,75 +66,10 @@ class _CreatorListViewState extends State<CreatorListView> {
       return _cachedFilteredCreators!;
     }
 
-    final trimmedQuery = widget.searchQuery.trim().toLowerCase();
-    final optimizedQuery = optimizeStringFormat(trimmedQuery);
-    final optimizedBoothQuery = optimizedBoothFormat(
-        trimmedQuery); // Ensure writing things like "AB08" would output put "ab8"
-
-    _cachedFilteredCreators = widget.creators
-        .map((creator) {
-          var maxScore = -1.0;
-          var maxScoreStringScore = -1.0;
-
-          // Check by booth number
-          for (final booth in creator.searchOptimizedBooths) {
-            if (booth.startsWith(optimizedBoothQuery)) {
-              maxScore = max(maxScore, 2.0);
-              maxScoreStringScore = max(maxScoreStringScore, 2.0);
-              break;
-            }
-          }
-
-          // Check by name
-          final nameScore =
-              fuzzyScore(optimizedQuery, creator.name.toLowerCase());
-          final nameStringScore =
-              optimizedQuery.length / creator.name.length.toDouble();
-
-          if (nameScore.matched && nameStringScore > maxScoreStringScore) {
-            maxScore = max(maxScore, nameScore.score);
-            maxScoreStringScore = nameStringScore;
-          }
-
-          // Fandom check - Ensure writing things like "BA" or "ZZZ" would output put "Blue Archive" and "Zenless Zone Zero" above other creators.
-          for (final fandom in creator.fandoms) {
-            final fandomScore =
-                fuzzyScore(optimizedQuery, fandom.toLowerCase());
-            final fandomStringScore =
-                optimizedQuery.length / fandom.length.toDouble();
-
-            if (fandomScore.matched &&
-                fandomStringScore > maxScoreStringScore) {
-              maxScore = max(maxScore, fandomScore.score);
-              maxScoreStringScore = fandomStringScore;
-            }
-          }
-
-          if (maxScore < 0.7) return null;
-
-          return (creator, maxScore, maxScoreStringScore);
-        })
-        .nonNulls
-        .sorted((a, b) {
-          final scoreCmp = b.$2.compareTo(a.$2);
-          if (scoreCmp != 0) return scoreCmp;
-
-          final scoreStringCmp = b.$3.compareTo(a.$3);
-          if (scoreStringCmp != 0) return scoreStringCmp;
-
-          return a.$1.name.toLowerCase().compareTo(b.$1.name.toLowerCase());
-        })
-        .map((result) => result.$1)
-        .toList();
+    _cachedFilteredCreators =
+        context.read<CreatorDataProvider>().searchCreators(widget.searchQuery);
 
     return _cachedFilteredCreators!;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Pre-compute fandom counts when widget is first created
-    _computeFandomCounts();
   }
 
   @override
@@ -313,11 +92,8 @@ class _CreatorListViewState extends State<CreatorListView> {
 
     // If creators list has changed, recompute fandom counts and clear cache
     if (oldWidget.creators != widget.creators) {
-      _computeFandomCounts(); // Recompute fandom counts
       _cachedFilteredCreators = null;
       _lastSearchQuery = null;
-      _cachedFandomSuggestions = null;
-      _lastFandomSearchQuery = null;
       setState(() {});
     }
   }
@@ -414,9 +190,13 @@ class _CreatorListViewState extends State<CreatorListView> {
           return _FandomSuggestions(
             suggestions: fandomSuggestions,
             onSuggestionSelected: (fandom) {
-              context
-                  .read<RecommendationService>()
-                  .recordFandomInterest(fandom);
+              final fandomId =
+                  context.read<CreatorDataProvider>().fandomIdForName(fandom);
+              if (fandomId != null) {
+                context
+                    .read<RecommendationService>()
+                    .recordFandomInterest(fandomId);
+              }
               setState(() {
                 _lastSelectedFandom = fandom;
               });
@@ -583,7 +363,13 @@ class _CreatorListViewState extends State<CreatorListView> {
         return _FandomSuggestions(
           suggestions: fandomSuggestions,
           onSuggestionSelected: (fandom) {
-            context.read<RecommendationService>().recordFandomInterest(fandom);
+            final fandomId =
+                context.read<CreatorDataProvider>().fandomIdForName(fandom);
+            if (fandomId != null) {
+              context
+                  .read<RecommendationService>()
+                  .recordFandomInterest(fandomId);
+            }
             setState(() {
               _lastSelectedFandom = fandom;
             });
@@ -797,7 +583,7 @@ class _SeeAllCreatorsButton extends StatelessWidget {
               umami.trackEvent(name: 'return_to_full_list_tapped');
               if (kIsWeb &&
                   context.read<CreatorDataProvider>().shouldRefreshOnReturn) {
-                html.window.location.assign('/');
+                browserAssign('/');
               } else {
                 context.read<CreatorDataProvider>().clearCreatorCustomList();
                 onShouldHideListScreen();
@@ -1046,11 +832,15 @@ class _FandomSuggestions extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
+                  final fandomId = context
+                      .read<CreatorDataProvider>()
+                      .fandomIdForName(fandom);
                   umami.trackEvent(
                     name: 'fandom_tapped',
                     data: {
                       'source': 'search_suggestion',
                       'fandom': fandom,
+                      if (fandomId != null) 'fandom_id': fandomId.toString(),
                     },
                   );
                   onSuggestionSelected?.call(fandom);

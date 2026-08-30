@@ -3,9 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/analytics_service.dart';
 import '../../services/creator_data_service.dart';
-import '../../utils/fuzzy_score.dart';
+import '../../services/recommendation_service.dart';
 import '../../utils/int_encoding.dart';
-import '../../utils/string_utils.dart';
 import '../creator_list_view.dart';
 import 'mobile_sheet_detent.dart';
 
@@ -625,13 +624,23 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                     return ActionChip(
                       label: Text(fandom, style: const TextStyle(fontSize: 12)),
                       onPressed: () {
+                        final fandomId = context
+                            .read<CreatorDataProvider>()
+                            .fandomIdForName(fandom);
                         umami.trackEvent(
                           name: 'fandom_tapped',
                           data: {
                             'source': 'search_suggestion',
                             'fandom': fandom,
+                            if (fandomId != null)
+                              'fandom_id': fandomId.toString(),
                           },
                         );
+                        if (fandomId != null) {
+                          context
+                              .read<RecommendationService>()
+                              .recordFandomInterest(fandomId);
+                        }
                         _focusNode.unfocus();
                         performSearch(fandom);
                       },
@@ -657,39 +666,6 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     BuildContext context,
     String searchQuery,
   ) {
-    final provider = context.read<CreatorDataProvider>();
-    if (searchQuery.isEmpty &&
-        !provider.isCreatorCustomListMode &&
-        provider.popularSearches.isNotEmpty) {
-      return provider.popularSearches;
-    }
-
-    final counts = <String, int>{};
-    for (final creator in widget.creators) {
-      for (final fandom in creator.fandoms) {
-        counts[fandom] = (counts[fandom] ?? 0) + 1;
-      }
-    }
-    if (searchQuery.isEmpty) {
-      final entries = counts.entries.toList()
-        ..sort((a, b) {
-          final count = b.value.compareTo(a.value);
-          return count != 0 ? count : a.key.compareTo(b.key);
-        });
-      return entries.take(20).map((entry) => entry.key).toList();
-    }
-
-    final query = optimizeStringFormat(searchQuery.trim().toLowerCase());
-    final matches = counts.entries
-        .map((entry) => (entry, fuzzyScore(query, entry.key.toLowerCase())))
-        .where((match) => match.$2.matched && match.$2.score >= 0.7)
-        .toList()
-      ..sort((a, b) {
-        final score = b.$2.score.compareTo(a.$2.score);
-        if (score != 0) return score;
-        final count = b.$1.value.compareTo(a.$1.value);
-        return count != 0 ? count : a.$1.key.compareTo(b.$1.key);
-      });
-    return matches.take(20).map((match) => match.$1.key).toList();
+    return context.read<CreatorDataProvider>().fandomSuggestions(searchQuery);
   }
 }

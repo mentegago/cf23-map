@@ -1,16 +1,31 @@
 import 'package:cf_map_flutter/models/booth_proximity.dart';
 import 'package:cf_map_flutter/models/creator.dart';
+import 'package:cf_map_flutter/models/fandom.dart';
 import 'package:cf_map_flutter/models/recommendation.dart';
 import 'package:cf_map_flutter/services/recommendation_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Creator creator(int id, String booth, List<String> fandoms) => Creator(
+const fandomIds = {
+  'Blue Archive': 1,
+  'Hololive': 2,
+  'Touhou': 3,
+  'HoYoverse': 9,
+  'Genshin Impact': 4,
+};
+
+Creator creator(int id, String booth, List<String> fandomNames) => Creator(
       id: id,
-      userId: 'user-$id',
       name: 'Creator $id',
-      booths: [booth],
-      day: 'BOTH',
-      fandoms: fandoms,
+      spaces: [CreatorSpace(code: booth)],
+      attendanceDayIds: const ['day-1', 'day-2'],
+      fandoms: fandomNames
+          .map((name) => Fandom(
+                id: fandomIds[name]!,
+                name: name,
+                kind: 'franchise',
+                parentId: name == 'Genshin Impact' ? 9 : null,
+              ))
+          .toList(),
     );
 
 void main() {
@@ -35,7 +50,7 @@ void main() {
   test('explicit fandom interest promotes matching creators', () {
     final profile = RecommendationProfile(
       explicitFandomSignals: {
-        'bluearchive': FandomSignal(strength: 5, lastUpdated: now),
+        1: FandomSignal(strength: 5, lastUpdated: now),
       },
     );
     const engine = RecommendationEngine();
@@ -54,11 +69,33 @@ void main() {
     expect(results.first.matchingFandoms, contains('Blue Archive'));
   });
 
+  test('parent fandom interest promotes creators in child franchises', () {
+    final profile = RecommendationProfile(
+      explicitFandomSignals: {
+        9: FandomSignal(strength: 5, lastUpdated: now),
+      },
+    );
+    const engine = RecommendationEngine();
+    final results = engine.recommend(
+      creators: [
+        creator(1, 'A-1', ['Genshin Impact']),
+        creator(2, 'B-1', ['Hololive']),
+      ],
+      profile: profile,
+      favoriteIds: {},
+      sessionExposureIds: {},
+      now: now,
+    );
+
+    expect(results.first.creator.id, 1);
+    expect(results.first.matchingFandoms, contains('Genshin Impact'));
+  });
+
   test('matching fandoms are ordered by their contribution', () {
     final profile = RecommendationProfile(
       explicitFandomSignals: {
-        'bluearchive': FandomSignal(strength: 5, lastUpdated: now),
-        'hololive': FandomSignal(strength: 2, lastUpdated: now),
+        1: FandomSignal(strength: 5, lastUpdated: now),
+        2: FandomSignal(strength: 2, lastUpdated: now),
       },
     );
     const engine = RecommendationEngine();
@@ -78,8 +115,8 @@ void main() {
   test('interested fandoms are ranked using the recommendation profile', () {
     final profile = RecommendationProfile(
       explicitFandomSignals: {
-        'bluearchive': FandomSignal(strength: 5, lastUpdated: now),
-        'hololive': FandomSignal(strength: 2, lastUpdated: now),
+        1: FandomSignal(strength: 5, lastUpdated: now),
+        2: FandomSignal(strength: 2, lastUpdated: now),
       },
     );
     const engine = RecommendationEngine();
@@ -174,7 +211,7 @@ void main() {
   test('asynchronous ranking matches synchronous ranking', () async {
     final profile = RecommendationProfile(
       explicitFandomSignals: {
-        'bluearchive': FandomSignal(strength: 5, lastUpdated: now),
+        1: FandomSignal(strength: 5, lastUpdated: now),
       },
     );
     const engine = RecommendationEngine();

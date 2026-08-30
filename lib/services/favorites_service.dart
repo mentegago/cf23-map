@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,9 +8,7 @@ import '../utils/url_encoding.dart';
 import 'creator_data_service.dart';
 
 class FavoritesService extends ChangeNotifier {
-  static const String _favoritesKey = 'cf23_favorite_creators';
   static const String _favoritesIdsKey = 'cf23_favorite_creator_ids';
-  static const String _migrationKey = 'cf23_favorites_migrated';
   static SharedPreferences? _prefs;
 
   // Local state for fast synchronous access
@@ -107,8 +104,6 @@ class FavoritesService extends ChangeNotifier {
   Future<void> _initPrefs() async {
     try {
       _prefs ??= await SharedPreferences.getInstance();
-      // Run migration if needed
-      await _migrateFavoritesIfNeeded();
     } catch (e) {
       // Handle cases where SharedPreferences is not available (e.g., HTTP, private browsing)
       if (kDebugMode) {
@@ -116,55 +111,6 @@ class FavoritesService extends ChangeNotifier {
       }
       // Create a mock SharedPreferences that doesn't persist
       _prefs = null;
-    }
-  }
-
-  /// Migrate old favorites (full Creator objects) to new ID-based system
-  Future<void> _migrateFavoritesIfNeeded() async {
-    if (_prefs == null) return;
-
-    final migrated = _prefs!.getBool(_migrationKey) ?? false;
-    if (migrated) return;
-
-    try {
-      final oldFavoritesJson = _prefs!.getStringList(_favoritesKey) ?? [];
-      if (oldFavoritesJson.isNotEmpty) {
-        // Convert old favorites to IDs
-        final favoriteIds = <int>[];
-        for (final jsonString in oldFavoritesJson) {
-          try {
-            final creatorJson = jsonDecode(jsonString) as Map<String, dynamic>;
-            final id = creatorJson['id'] as int?;
-            if (id != null) {
-              favoriteIds.add(id);
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print('Failed to migrate favorite: $e');
-            }
-          }
-        }
-
-        // Save new ID-based favorites
-        if (favoriteIds.isNotEmpty) {
-          await _prefs!.setStringList(_favoritesIdsKey,
-              favoriteIds.map((id) => id.toString()).toList());
-          if (kDebugMode) {
-            print(
-                'Migrated ${favoriteIds.length} favorites to ID-based system');
-          }
-        }
-      }
-
-      // Mark migration as complete
-      await _prefs!.setBool(_migrationKey, true);
-
-      // Clean up old favorites data
-      await _prefs!.remove(_favoritesKey);
-    } catch (e) {
-      if (kDebugMode) {
-        print('Migration failed: $e');
-      }
     }
   }
 

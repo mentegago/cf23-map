@@ -92,15 +92,15 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
                       color:
                           theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
-                trailing: widget.creator.sampleworksImages.isNotEmpty
+                trailing: widget.creator.assets.gallery.isNotEmpty
                     ? IconButton(
-                        icon: widget.creator.sampleworksImages.length > 1
+                        icon: widget.creator.assets.gallery.length > 1
                             ? const Icon(Icons.photo_library)
                             : const Icon(Icons.photo),
                         onPressed: () {
                           showSampleWorksGallery(
                             context: context,
-                            imageUrls: widget.creator.sampleworksImages,
+                            imageUrls: widget.creator.assets.gallery,
                             creator: widget.creator,
                           );
                         },

@@ -13,14 +13,6 @@ class CreatorAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (creator.profileImage != null) {
-      return CircleAvatar(
-        backgroundImage: AssetImage(creator.profileImage!),
-        backgroundColor: Colors.transparent,
-        radius: radius,
-      );
-    }
-
     final section = _getBoothSection(creator);
     return CircleAvatar(
       backgroundColor: _getSectionColor(section),
@@ -42,7 +34,9 @@ class CreatorAvatar extends StatelessWidget {
     if (hyphen > 0) {
       return firstBooth.substring(0, hyphen).toUpperCase();
     }
-    return firstBooth.isNotEmpty ? firstBooth.substring(0, 1).toUpperCase() : '?';
+    return firstBooth.isNotEmpty
+        ? firstBooth.substring(0, 1).toUpperCase()
+        : '?';
   }
 
   Color _getSectionColor(String section) {
@@ -60,4 +54,3 @@ class CreatorAvatar extends StatelessWidget {
     return palette[idx];
   }
 }
-

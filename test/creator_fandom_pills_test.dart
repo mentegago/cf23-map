@@ -1,4 +1,5 @@
 import 'package:cf_map_flutter/models/creator.dart';
+import 'package:cf_map_flutter/models/fandom.dart';
 import 'package:cf_map_flutter/widgets/creator_tile.dart';
 import 'package:cf_map_flutter/widgets/creator_fandom_pills.dart';
 import 'package:flutter/material.dart';
@@ -33,14 +34,21 @@ void main() {
       (tester) async {
     final creator = Creator(
       id: 1,
-      userId: 'creator-1',
       name: 'Artist Strong',
-      booths: const ['L-49a', 'L-49b'],
-      day: 'BOTH',
-      fandoms: const [
-        'Dance with Death',
-        'A Space for the Unbound',
-        'Alien Stage',
+      spaces: const [
+        CreatorSpace(code: 'L-49a'),
+        CreatorSpace(code: 'L-49b'),
+      ],
+      attendanceDayIds: const ['day-1', 'day-2'],
+      fandoms: [
+        Fandom(
+            id: 1, name: 'Dance with Death', kind: 'franchise', parentId: null),
+        Fandom(
+            id: 2,
+            name: 'A Space for the Unbound',
+            kind: 'franchise',
+            parentId: null),
+        Fandom(id: 3, name: 'Alien Stage', kind: 'franchise', parentId: null),
       ],
     );
 
@@ -52,7 +60,7 @@ void main() {
             child: CreatorTile(
               creator: creator,
               onCreatorSelected: (_) {},
-              recommendationFandoms: creator.fandoms,
+              recommendationFandoms: creator.fandomNames,
             ),
           ),
         ),

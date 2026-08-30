@@ -54,7 +54,7 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fandoms = widget.fandoms ?? widget.creator.fandoms;
+    final fandoms = widget.fandoms ?? widget.creator.fandomNames;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -94,7 +94,7 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
                       child: Transform.scale(
                         scale: 1.3,
                         child: CachedNetworkImage(
-                            imageUrl: widget.creator.circleCut ?? '',
+                            imageUrl: widget.creator.assets.thumbnail ?? '',
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Container(
                                   color: _getSectionColor(
@@ -142,16 +142,15 @@ class _CreatorTileCardState extends State<CreatorTileCard> {
                                 ],
                               ),
                             ),
-                            if (widget.creator.sampleworksImages.isNotEmpty)
+                            if (widget.creator.assets.gallery.isNotEmpty)
                               IconButton(
-                                icon:
-                                    widget.creator.sampleworksImages.length > 1
-                                        ? const Icon(Icons.photo_library)
-                                        : const Icon(Icons.photo),
+                                icon: widget.creator.assets.gallery.length > 1
+                                    ? const Icon(Icons.photo_library)
+                                    : const Icon(Icons.photo),
                                 onPressed: () {
                                   showSampleWorksGallery(
                                     context: context,
-                                    imageUrls: widget.creator.sampleworksImages,
+                                    imageUrls: widget.creator.assets.gallery,
                                     creator: widget.creator,
                                   );
                                 },
