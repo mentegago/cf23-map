@@ -1,7 +1,6 @@
 import 'package:cf_map_flutter/services/creator_data_service.dart';
 import 'package:cf_map_flutter/services/favorites_service.dart';
 import 'package:cf_map_flutter/widgets/creator_tile.dart';
-import 'package:cf_map_flutter/widgets/creator_tile_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +9,6 @@ import '../models/creator.dart';
 import '../models/recommendation.dart';
 import '../services/analytics_service.dart';
 import '../services/recommendation_service.dart';
-import '../services/settings_provider.dart';
 import '../utils/browser_navigation.dart';
 
 class CreatorListView extends StatefulWidget {
@@ -100,59 +98,12 @@ class _CreatorListViewState extends State<CreatorListView> {
 
   @override
   Widget build(BuildContext context) {
-    final useCardView = context.select(
-        (SettingsProvider settingsProvider) => settingsProvider.useCardView);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: widget.searchQuery.isNotEmpty
-              ? _buildSearchResults(context, useCardView)
-              : _buildMainView(
-                  context, useCardView, widget.onShouldHideListScreen),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-          ),
-          child: SegmentedButton<bool>(
-            selected: useCardView ? {true} : {false},
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(
-                  value: false,
-                  label: Text('Compact'),
-                  icon: Icon(Icons.view_list)),
-              ButtonSegment(
-                  value: true,
-                  label: Text('Card'),
-                  icon: Icon(Icons.view_agenda)),
-            ],
-            onSelectionChanged: (value) {
-              umami.trackEvent(
-                name: 'list_mode_changed',
-                data: {'mode': value.first ? 'card' : 'compact'},
-              );
-              context.read<SettingsProvider>().setUseCardView(value.first);
-            },
-          ),
-        ),
-      ],
-    );
+    return widget.searchQuery.isNotEmpty
+        ? _buildSearchResults(context)
+        : _buildMainView(context, widget.onShouldHideListScreen);
   }
 
-  Widget _buildSearchResults(BuildContext context, bool useCardView) {
+  Widget _buildSearchResults(BuildContext context) {
     final theme = Theme.of(context);
     final favoriteIds = context.select(
       (FavoritesService service) =>
@@ -247,17 +198,16 @@ class _CreatorListViewState extends State<CreatorListView> {
 
         // Regular search result
         final creator = filteredCreators[adjustedIndex - 1];
-        return useCardView
-            ? CreatorTileCard(
-                creator: creator, onCreatorSelected: widget.onCreatorSelected)
-            : CreatorTile(
-                creator: creator, onCreatorSelected: widget.onCreatorSelected);
+        return CreatorTile(
+          creator: creator,
+          onCreatorSelected: widget.onCreatorSelected,
+        );
       },
     );
   }
 
-  Widget _buildMainView(BuildContext context, bool useCardView,
-      VoidCallback onShouldHideListScreen) {
+  Widget _buildMainView(
+      BuildContext context, VoidCallback onShouldHideListScreen) {
     final theme = Theme.of(context);
     final isCreatorCustomListMode = context.select(
         (CreatorDataProvider creatorDataProvider) =>
@@ -332,7 +282,6 @@ class _CreatorListViewState extends State<CreatorListView> {
             recommendations,
             fandomSuggestions,
             isCreatorCustomListMode,
-            useCardView,
             showAddAllToFavorites,
             shouldRefreshOnReturn,
             onShouldHideListScreen);
@@ -347,7 +296,6 @@ class _CreatorListViewState extends State<CreatorListView> {
     List<RecommendationResult> recommendations,
     List<String> fandomSuggestions,
     bool isCreatorCustomListMode,
-    bool useCardView,
     bool showAddAllToFavorites,
     bool shouldRefreshOnReturn,
     VoidCallback onShouldHideListScreen,
@@ -390,13 +338,10 @@ class _CreatorListViewState extends State<CreatorListView> {
 
       final favoriteIndex = index - currentIndex;
       if (favoriteIndex >= 0 && favoriteIndex < favorites.length) {
-        return useCardView
-            ? CreatorTileCard(
-                creator: favorites[favoriteIndex],
-                onCreatorSelected: widget.onCreatorSelected)
-            : CreatorTile(
-                creator: favorites[favoriteIndex],
-                onCreatorSelected: widget.onCreatorSelected);
+        return CreatorTile(
+          creator: favorites[favoriteIndex],
+          onCreatorSelected: widget.onCreatorSelected,
+        );
       }
       currentIndex += favorites.length;
 
@@ -436,17 +381,11 @@ class _CreatorListViewState extends State<CreatorListView> {
         final creator = recommendation.creator;
         final onSelected =
             widget.onRecommendationSelected ?? widget.onCreatorSelected;
-        return useCardView
-            ? CreatorTileCard(
-                creator: creator,
-                onCreatorSelected: onSelected,
-                fandoms: recommendation.matchingFandoms,
-              )
-            : CreatorTile(
-                creator: creator,
-                onCreatorSelected: onSelected,
-                recommendationFandoms: recommendation.matchingFandoms,
-              );
+        return CreatorTile(
+          creator: creator,
+          onCreatorSelected: onSelected,
+          recommendationFandoms: recommendation.matchingFandoms,
+        );
       }
       currentIndex += recommendations.length;
     }
@@ -480,13 +419,10 @@ class _CreatorListViewState extends State<CreatorListView> {
     // All creators items
     final creatorIndex = index - currentIndex;
     if (creatorIndex >= 0 && creatorIndex < _filteredCreators.length) {
-      return useCardView
-          ? CreatorTileCard(
-              creator: _filteredCreators[creatorIndex],
-              onCreatorSelected: widget.onCreatorSelected)
-          : CreatorTile(
-              creator: _filteredCreators[creatorIndex],
-              onCreatorSelected: widget.onCreatorSelected);
+      return CreatorTile(
+        creator: _filteredCreators[creatorIndex],
+        onCreatorSelected: widget.onCreatorSelected,
+      );
     }
 
     currentIndex += _filteredCreators.length;

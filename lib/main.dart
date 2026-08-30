@@ -1,4 +1,3 @@
-import 'package:cf_map_flutter/services/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:umami_analytics/umami_analytics.dart';
@@ -14,7 +13,6 @@ void main() async {
   final disableRecommendations = _recommendationsDisabled(Uri.base);
   final creatorDataProvider = CreatorDataProvider()..initialize();
   final favoritesService = FavoritesService(creatorDataProvider)..initialize();
-  final settingsProvider = SettingsProvider()..initialize();
   final recommendationService = RecommendationService(
     disabled: disableRecommendations,
   )..initialize();
@@ -22,7 +20,6 @@ void main() async {
   runApp(CFMapApp(
     creatorDataProvider: creatorDataProvider,
     favoritesService: favoritesService,
-    settingsProvider: settingsProvider,
     recommendationService: recommendationService,
   ));
 }
@@ -35,13 +32,11 @@ bool _recommendationsDisabled(Uri uri) {
 class CFMapApp extends StatelessWidget {
   final CreatorDataProvider creatorDataProvider;
   final FavoritesService favoritesService;
-  final SettingsProvider settingsProvider;
   final RecommendationService recommendationService;
   const CFMapApp({
     super.key,
     required this.creatorDataProvider,
     required this.favoritesService,
-    required this.settingsProvider,
     required this.recommendationService,
   });
 
@@ -54,9 +49,6 @@ class CFMapApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (context) => favoritesService,
-        ),
-        ChangeNotifierProvider(
-          create: (context) => settingsProvider,
         ),
         ChangeNotifierProvider(
           create: (context) => recommendationService,
