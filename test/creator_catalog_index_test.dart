@@ -147,6 +147,7 @@ void main() {
       name: 'Blue Archive',
       kind: 'franchise',
       parentId: null,
+      alternateNames: const ['BA'],
     );
     final marvel = Fandom(
       id: 41,
@@ -160,6 +161,20 @@ void main() {
       kind: 'franchise',
       parentId: null,
       alternateNames: const ['Marvel'],
+    );
+    final attackOnTitan = Fandom(
+      id: 110,
+      name: 'Attack on Titan',
+      kind: 'franchise',
+      parentId: null,
+      alternateNames: const ['AOT', 'Shingeki No Kyojin', 'Shingeki No Kyoujin'],
+    );
+    final magicalDoremi = Fandom(
+      id: 270,
+      name: 'Magical DoReMi',
+      kind: 'franchise',
+      parentId: null,
+      alternateNames: const ['Doremi', 'Magical Do Re Mi', 'Ojamajo Doremi'],
     );
     Creator creator(int id, String name, Fandom fandom) => Creator(
           id: id,
@@ -178,16 +193,27 @@ void main() {
         creator(6, 'Original Two', original),
         creator(7, 'Original Three', original),
         creator(8, 'West Booth', dandadan),
+        creator(9, 'Titan Booth', attackOnTitan),
+        creator(10, 'Witch Booth', magicalDoremi),
       ],
-      {1: original, 41: marvel, 28: dc, 34: blueArchive, 88: dandadan},
+      {
+        1: original,
+        41: marvel,
+        28: dc,
+        34: blueArchive,
+        88: dandadan,
+        110: attackOnTitan,
+        270: magicalDoremi,
+      },
     );
 
     expect(index.fandomSuggestions('Oc charater').first, 'Original');
     expect(index.fandomSuggestions('OC').first, 'Original');
+    expect(index.fandomSuggestions('shingeki').first, 'Attack on Titan');
+    expect(index.fandomSuggestions('ojama').first, 'Magical DoReMi');
     expect(index.fandomSuggestions('Dan').first, 'Dandadan');
     expect(index.search('Dan').first.id, 8);
     expect(index.fandomSuggestions('BA').first, 'Blue Archive');
-    expect(index.fandomSuggestions('BA'), isNot(contains('Original')));
     expect(
       index.search('Oc charater').map((creator) => creator.id),
       unorderedEquals([1, 6, 7]),

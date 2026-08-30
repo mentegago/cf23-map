@@ -228,7 +228,6 @@ class CreatorCatalogIndex {
         fandom.searchLabels[i],
         trimmedQuery: trimmedQuery,
         optimizedQuery: optimizedQuery,
-        requireCoverage: i > 0,
       );
       if (match == null) continue;
       if (i == 0) fromCanonical = true;
@@ -256,16 +255,10 @@ bool _fandomBeatsCurrent(_CreatorMatch current, _FandomMatch fandom) {
   return fandom.stringScore > current.stringScore;
 }
 
-/// Alternate names only count when the query is actually naming that alias.
-/// Without this, two-letter queries match word starts inside long booth-label
-/// variants on very popular fandoms.
-const _alternateNameCoverage = 0.5;
-
 ({double score, double stringScore})? _scoreSearchLabel(
   FandomSearchLabel label, {
   required String trimmedQuery,
   required String optimizedQuery,
-  bool requireCoverage = false,
 }) {
   var score = -1.0;
   var stringScore = -1.0;
@@ -285,9 +278,7 @@ const _alternateNameCoverage = 0.5;
       stringScore = reverseStringScore;
     }
   }
-  if (score < 0) return null;
-  if (requireCoverage && stringScore < _alternateNameCoverage) return null;
-  return (score: score, stringScore: stringScore);
+  return score < 0 ? null : (score: score, stringScore: stringScore);
 }
 
 class _CreatorMatch {
