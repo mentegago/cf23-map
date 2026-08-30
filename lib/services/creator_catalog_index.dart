@@ -63,14 +63,21 @@ class CreatorCatalogIndex {
     }
 
     final fandoms = usedFandoms.values.sortedBy((fandom) => fandom.name);
+    final fandomIdBySearchName = <String, int>{
+      for (final fandom in allFandoms.values)
+        if (fandom.searchName.isNotEmpty) fandom.searchName: fandom.id,
+    };
+    for (final fandom in allFandoms.values) {
+      for (final label in fandom.searchLabels) {
+        fandomIdBySearchName.putIfAbsent(label.optimized, () => fandom.id);
+      }
+    }
     return CreatorCatalogIndex._(
       creators: creators,
       creatorById: creatorById,
       creatorsByBooth: creatorsByBooth,
       fandomById: Map.unmodifiable(allFandoms),
-      fandomIdBySearchName: {
-        for (final fandom in allFandoms.values) fandom.searchName: fandom.id,
-      },
+      fandomIdBySearchName: fandomIdBySearchName,
       creatorsByFandomId: creatorsByFandomId,
       fandomPopularity: fandomPopularity,
       fandoms: fandoms,
@@ -110,7 +117,6 @@ class CreatorCatalogIndex {
     final trimmedQuery = query.trim().toLowerCase();
     final optimizedQuery = optimizeStringFormat(trimmedQuery);
     if (optimizedQuery.isEmpty) return const [];
-    final maxPopularity = fandomPopularity.values.fold<int>(1, max);
     final matches = <_FandomMatch>[];
 
     for (final fandom in fandoms) {
@@ -120,8 +126,7 @@ class CreatorCatalogIndex {
         optimizedQuery: optimizedQuery,
       );
       if (match == null || match.score < 0.7) continue;
-      final popularity = fandomPopularity[fandom.id] ?? 0;
-      matches.add(match.withPopularity(popularity, maxPopularity));
+      matches.add(match);
     }
     matches.sort(_compareFandomMatches);
     return matches
@@ -165,7 +170,12 @@ class CreatorCatalogIndex {
         stringScore = nameStringScore;
       }
       if (score >= 0.7) {
-        scores[creator.id] = _CreatorMatch(creator, score, stringScore);
+        scores[creator.id] = _CreatorMatch(
+          creator,
+          score,
+          stringScore,
+          fromCanonical: true,
+        );
       }
     }
 
@@ -178,11 +188,12 @@ class CreatorCatalogIndex {
       if (fandomMatch == null || fandomMatch.score < 0.7) continue;
       for (final creator in creatorsByFandomId[fandom.id] ?? const []) {
         final current = scores[creator.id];
-        if (current == null || fandomMatch.stringScore > current.stringScore) {
+        if (current == null || _fandomBeatsCurrent(current, fandomMatch)) {
           scores[creator.id] = _CreatorMatch(
             creator,
             max(current?.score ?? -1, fandomMatch.score),
             fandomMatch.stringScore,
+            fromCanonical: fandomMatch.fromCanonical,
           );
         }
       }
@@ -190,6 +201,9 @@ class CreatorCatalogIndex {
 
     final matches = scores.values.toList()
       ..sort((a, b) {
+        if (a.fromCanonical != b.fromCanonical) {
+          return a.fromCanonical ? -1 : 1;
+        }
         final score = b.score.compareTo(a.score);
         if (score != 0) return score;
         final stringScore = b.stringScore.compareTo(a.stringScore);
@@ -208,65 +222,109 @@ class CreatorCatalogIndex {
   }) {
     var score = -1.0;
     var stringScore = -1.0;
-    final forward = fuzzyScore(optimizedQuery, fandom.name.toLowerCase());
-    final forwardStringScore =
-        fandom.name.isEmpty ? 0.0 : optimizedQuery.length / fandom.name.length;
-    if (forward.matched) {
-      score = forward.score;
-      stringScore = forwardStringScore;
-    }
-
-    if (fandom.searchName.isNotEmpty && trimmedQuery.isNotEmpty) {
-      final reverse = fuzzyScore(fandom.searchName, trimmedQuery);
-      final reverseStringScore = fandom.searchName.length / trimmedQuery.length;
-      if (reverse.matched && reverseStringScore > stringScore) {
-        score = max(score, reverse.score);
-        stringScore = reverseStringScore;
+    var fromCanonical = false;
+    for (var i = 0; i < fandom.searchLabels.length; i++) {
+      final match = _scoreSearchLabel(
+        fandom.searchLabels[i],
+        trimmedQuery: trimmedQuery,
+        optimizedQuery: optimizedQuery,
+        requireCoverage: i > 0,
+      );
+      if (match == null) continue;
+      if (i == 0) fromCanonical = true;
+      if (match.stringScore > stringScore ||
+          (match.stringScore == stringScore && match.score > score)) {
+        score = match.score;
+        stringScore = match.stringScore;
       }
     }
-    return score < 0 ? null : _FandomMatch(fandom, score, stringScore);
+    return score < 0
+        ? null
+        : _FandomMatch(
+            fandom,
+            score,
+            stringScore,
+            fromCanonical: fromCanonical,
+          );
   }
+}
+
+bool _fandomBeatsCurrent(_CreatorMatch current, _FandomMatch fandom) {
+  if (fandom.fromCanonical != current.fromCanonical) {
+    return fandom.fromCanonical;
+  }
+  return fandom.stringScore > current.stringScore;
+}
+
+/// Alternate names only count when the query is actually naming that alias.
+/// Without this, two-letter queries match word starts inside long booth-label
+/// variants on very popular fandoms.
+const _alternateNameCoverage = 0.5;
+
+({double score, double stringScore})? _scoreSearchLabel(
+  FandomSearchLabel label, {
+  required String trimmedQuery,
+  required String optimizedQuery,
+  bool requireCoverage = false,
+}) {
+  var score = -1.0;
+  var stringScore = -1.0;
+  final forward = fuzzyScore(optimizedQuery, label.target);
+  final forwardStringScore =
+      label.target.isEmpty ? 0.0 : optimizedQuery.length / label.target.length;
+  if (forward.matched) {
+    score = forward.score;
+    stringScore = forwardStringScore;
+  }
+
+  if (label.optimized.isNotEmpty && trimmedQuery.isNotEmpty) {
+    final reverse = fuzzyScore(label.optimized, trimmedQuery);
+    final reverseStringScore = label.optimized.length / trimmedQuery.length;
+    if (reverse.matched && reverseStringScore > stringScore) {
+      score = max(score, reverse.score);
+      stringScore = reverseStringScore;
+    }
+  }
+  if (score < 0) return null;
+  if (requireCoverage && stringScore < _alternateNameCoverage) return null;
+  return (score: score, stringScore: stringScore);
 }
 
 class _CreatorMatch {
   final Creator creator;
   final double score;
   final double stringScore;
+  final bool fromCanonical;
 
-  const _CreatorMatch(this.creator, this.score, this.stringScore);
+  const _CreatorMatch(
+    this.creator,
+    this.score,
+    this.stringScore, {
+    this.fromCanonical = true,
+  });
 }
 
 class _FandomMatch {
   final Fandom fandom;
   final double score;
   final double stringScore;
-  final int popularity;
-  final double combinedScore;
+  final bool fromCanonical;
 
   const _FandomMatch(
     this.fandom,
     this.score,
     this.stringScore, {
-    this.popularity = 0,
-    this.combinedScore = 0,
+    this.fromCanonical = false,
   });
-
-  _FandomMatch withPopularity(int popularity, int maxPopularity) =>
-      _FandomMatch(
-        fandom,
-        score,
-        stringScore,
-        popularity: popularity,
-        combinedScore: score * 0.5 + popularity / maxPopularity * 0.5,
-      );
 }
 
 int _compareFandomMatches(_FandomMatch a, _FandomMatch b) {
-  final combined = b.combinedScore.compareTo(a.combinedScore);
-  if (combined != 0) return combined;
+  if (a.fromCanonical != b.fromCanonical) {
+    return a.fromCanonical ? -1 : 1;
+  }
   final score = b.score.compareTo(a.score);
   if (score != 0) return score;
-  final popularity = b.popularity.compareTo(a.popularity);
-  if (popularity != 0) return popularity;
+  final stringScore = b.stringScore.compareTo(a.stringScore);
+  if (stringScore != 0) return stringScore;
   return a.fandom.name.toLowerCase().compareTo(b.fandom.name.toLowerCase());
 }

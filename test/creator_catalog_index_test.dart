@@ -85,4 +85,115 @@ void main() {
     expect(index.creatorsByFandomId[34], hasLength(2));
     expect(index.search('HoYoverse').map((creator) => creator.id), [4]);
   });
+
+  test('search pills rank by match, empty pills rank by popularity', () {
+    final blueArchive = Fandom(
+      id: 34,
+      name: 'Blue Archive',
+      kind: 'franchise',
+      parentId: null,
+    );
+    final bluey = Fandom(
+      id: 90,
+      name: 'Bluey',
+      kind: 'franchise',
+      parentId: null,
+    );
+    Creator creator(int id, Fandom fandom) => Creator(
+          id: id,
+          name: 'Artist $id',
+          spaces: [CreatorSpace(code: 'A-$id')],
+          attendanceDayIds: const ['day-1'],
+          fandoms: [fandom],
+        );
+    final index = CreatorCatalogIndex.build(
+      [
+        creator(1, blueArchive),
+        creator(2, blueArchive),
+        creator(3, blueArchive),
+        creator(4, bluey),
+      ],
+      {34: blueArchive, 90: bluey},
+    );
+
+    expect(index.fandomSuggestions('').first, 'Blue Archive');
+    expect(index.popularFandomNames().first, 'Blue Archive');
+    expect(index.fandomSuggestions('blue').first, 'Bluey');
+  });
+
+  test('alternate names match the canonical fandom for search and pills', () {
+    final original = Fandom(
+      id: 1,
+      name: 'Original',
+      kind: 'generic_tag',
+      parentId: null,
+      alternateNames: const [
+        'OC',
+        'Oc charater',
+        'Original Characters',
+        'Original Bara Art',
+        'Dan Karya Original.',
+        'Dan',
+      ],
+    );
+    final dandadan = Fandom(
+      id: 88,
+      name: 'Dandadan',
+      kind: 'franchise',
+      parentId: null,
+    );
+    final blueArchive = Fandom(
+      id: 34,
+      name: 'Blue Archive',
+      kind: 'franchise',
+      parentId: null,
+    );
+    final marvel = Fandom(
+      id: 41,
+      name: 'Marvel',
+      kind: 'franchise',
+      parentId: null,
+    );
+    final dc = Fandom(
+      id: 28,
+      name: 'DC',
+      kind: 'franchise',
+      parentId: null,
+      alternateNames: const ['Marvel'],
+    );
+    Creator creator(int id, String name, Fandom fandom) => Creator(
+          id: id,
+          name: name,
+          spaces: [CreatorSpace(code: 'A-$id')],
+          attendanceDayIds: const ['day-1'],
+          fandoms: [fandom],
+        );
+    final index = CreatorCatalogIndex.build(
+      [
+        creator(1, 'OC Artist', original),
+        creator(2, 'Marvel Artist', marvel),
+        creator(3, 'DC Artist', dc),
+        creator(4, 'BA Artist', blueArchive),
+        creator(5, 'BA Artist Two', blueArchive),
+        creator(6, 'Original Two', original),
+        creator(7, 'Original Three', original),
+        creator(8, 'West Booth', dandadan),
+      ],
+      {1: original, 41: marvel, 28: dc, 34: blueArchive, 88: dandadan},
+    );
+
+    expect(index.fandomSuggestions('Oc charater').first, 'Original');
+    expect(index.fandomSuggestions('OC').first, 'Original');
+    expect(index.fandomSuggestions('Dan').first, 'Dandadan');
+    expect(index.search('Dan').first.id, 8);
+    expect(index.fandomSuggestions('BA').first, 'Blue Archive');
+    expect(index.fandomSuggestions('BA'), isNot(contains('Original')));
+    expect(
+      index.search('Oc charater').map((creator) => creator.id),
+      unorderedEquals([1, 6, 7]),
+    );
+    expect(index.fandomIdForName('Oc charater'), 1);
+    expect(index.fandomIdForName('OC'), 1);
+    expect(index.fandomIdForName('Marvel'), 41);
+  });
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/analytics_service.dart';
 import '../../services/creator_data_service.dart';
+import '../../services/favorites_service.dart';
 import '../../services/recommendation_service.dart';
 import '../../utils/int_encoding.dart';
 import '../creator_list_view.dart';
@@ -666,6 +667,22 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     BuildContext context,
     String searchQuery,
   ) {
-    return context.read<CreatorDataProvider>().fandomSuggestions(searchQuery);
+    final data = context.read<CreatorDataProvider>();
+    if (searchQuery.trim().isNotEmpty) {
+      return data.fandomSuggestions(searchQuery);
+    }
+    if (data.isCreatorCustomListMode) {
+      return data.popularSearches;
+    }
+    final favoriteIds = context
+        .watch<FavoritesService>()
+        .favorites
+        .map((creator) => creator.id)
+        .toSet();
+    return context.watch<RecommendationService>().homeFandomSuggestionsFor(
+          creators: widget.creators,
+          favoriteIds: favoriteIds,
+          popularFandoms: data.popularSearches,
+        );
   }
 }
