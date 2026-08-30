@@ -1,28 +1,35 @@
-import 'package:cf_map_flutter/services/creator_data_service.dart';
-import 'package:cf_map_flutter/services/favorites_service.dart';
-import 'package:cf_map_flutter/services/settings_provider.dart';
-import 'package:cf_map_flutter/services/recommendation_service.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:convert';
 
-import 'package:cf_map_flutter/main.dart';
+import 'package:cf_map_flutter/services/creator_data_service.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('App smoke test', (WidgetTester tester) async {
-    final creatorDataProvider = CreatorDataProvider()..initialize();
-    final favoritesService = FavoritesService(creatorDataProvider)
-      ..initialize();
-    final settingsProvider = SettingsProvider()..initialize();
-    final recommendationService = RecommendationService()..initialize();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(CFMapApp(
-      creatorDataProvider: creatorDataProvider,
-      favoritesService: favoritesService,
-      settingsProvider: settingsProvider,
-      recommendationService: recommendationService,
-    ));
+  test('bundled catalog initializes and is cached for offline launches',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final provider = CreatorDataProvider(enableRemoteUpdates: false);
 
-    // Verify that the app title is shown
-    expect(find.text('CF23 Booth Map'), findsOneWidget);
+    await provider.initialize();
+
+    expect(provider.creators, hasLength(1478));
+    expect(provider.fandomById, isNotEmpty);
+    final cachedSnapshot = (await SharedPreferences.getInstance())
+        .getString('cf23_catalog_snapshot_v3');
+    expect(cachedSnapshot, isNotNull);
+    final cachedJson = json.decode(cachedSnapshot!) as Map<String, dynamic>;
+    expect(cachedJson['version'], isPositive);
+    expect(cachedJson['catalog'], isA<Map>());
+    expect(cachedJson['fandomRegistry'], isA<Map>());
+
+    provider.dispose();
+
+    final cachedProvider = CreatorDataProvider(enableRemoteUpdates: false);
+    await cachedProvider.initialize();
+    expect(cachedProvider.creators, hasLength(1478));
+    expect(cachedProvider.fandomIdForName('Blue Archive'), isNotNull);
+    cachedProvider.dispose();
   });
 }

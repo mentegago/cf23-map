@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:html' as html;
 import 'package:cf_map_flutter/services/analytics_service.dart';
 import '../services/map_parser.dart';
 import '../services/creator_data_service.dart';
 import '../utils/int_encoding.dart';
+import '../utils/browser_navigation.dart';
 import '../widgets/mobile/creator_selector_sheet.dart';
 import '../models/map_cell.dart';
 import '../models/creator.dart';
@@ -128,14 +128,13 @@ class _MapScreenState extends State<MapScreen> {
 
   void _updateQueryParametersIfNeeded(int? creatorId) {
     if (kIsWeb) {
-      final uri = Uri.parse(html.window.location.href);
+      final uri = Uri.parse(browserCurrentUrl());
       final creatorParam = uri.queryParameters['creator'];
       final creatorIdParam =
           int.tryParse(uri.queryParameters['creator_id'] ?? '');
 
       if (creatorParam != null || creatorIdParam != null) {
-        html.window.history.pushState(
-            null, '', creatorId != null ? '/?creator_id=$creatorId' : '/');
+        browserPushState(creatorId != null ? '/?creator_id=$creatorId' : '/');
       }
     }
   }
@@ -143,7 +142,7 @@ class _MapScreenState extends State<MapScreen> {
   void _handleQueryParameters() {
     context.read<CreatorDataProvider>().onCreatorDataServiceInitialized(() {
       try {
-        final uri = Uri.parse(html.window.location.href);
+        final uri = Uri.parse(browserCurrentUrl());
         final creatorParam = uri.queryParameters['creator'];
         final creatorIdParam =
             int.tryParse(uri.queryParameters['creator_id'] ?? '');

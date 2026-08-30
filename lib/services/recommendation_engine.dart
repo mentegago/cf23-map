@@ -2,8 +2,8 @@ import 'dart:math';
 
 import '../models/booth_proximity.dart';
 import '../models/creator.dart';
+import '../models/fandom.dart';
 import '../models/recommendation.dart';
-import '../utils/string_utils.dart';
 
 class RecommendationEngine {
   static const double _fandomWeight = 0.75;
@@ -33,10 +33,11 @@ class RecommendationEngine {
       creatorsById: {for (final creator in creators) creator.id: creator},
       profile: profile,
       favoriteIds: favoriteIds,
+      catalog: catalog,
       now: now ?? DateTime.now(),
     );
     final ranked = interestVector.entries
-        .where((entry) => catalog.displayByNormalized.containsKey(entry.key))
+        .where((entry) => catalog.displayById.containsKey(entry.key))
         .toList()
       ..sort((a, b) {
         final strength = b.value.compareTo(a.value);
@@ -46,9 +47,7 @@ class RecommendationEngine {
         if (popularity != 0) return popularity;
         return a.key.compareTo(b.key);
       });
-    return ranked
-        .map((entry) => catalog.displayByNormalized[entry.key]!)
-        .toList();
+    return ranked.map((entry) => catalog.displayById[entry.key]!).toList();
   }
 
   Future<List<RecommendationResult>> recommendAsync({
@@ -76,6 +75,7 @@ class RecommendationEngine {
       creatorsById: creatorsById,
       profile: profile,
       favoriteIds: favoriteIds,
+      catalog: fandomCatalog,
       now: currentTime,
     );
     await budget.checkpoint(force: true);
@@ -138,7 +138,7 @@ class RecommendationEngine {
       candidates,
       limit,
       budget: budget,
-      normalizedFandoms: fandomCatalog.setsByCreatorId,
+      fandomIdsByCreator: fandomCatalog.setsByCreatorId,
       isCancelled: isCancelled,
     );
   }
@@ -160,6 +160,7 @@ class RecommendationEngine {
       creatorsById: creatorsById,
       profile: profile,
       favoriteIds: favoriteIds,
+      catalog: fandomCatalog,
       now: currentTime,
     );
     final anchors = _buildItineraryAnchors(
@@ -214,17 +215,18 @@ class RecommendationEngine {
     return _selectDiverse(
       candidates,
       limit,
-      normalizedFandoms: fandomCatalog.setsByCreatorId,
+      fandomIdsByCreator: fandomCatalog.setsByCreatorId,
     );
   }
 
-  Map<String, double> _buildInterestVector({
+  Map<int, double> _buildInterestVector({
     required Map<int, Creator> creatorsById,
     required RecommendationProfile profile,
     required Set<int> favoriteIds,
+    required _FandomCatalog catalog,
     required DateTime now,
   }) {
-    final vector = <String, double>{};
+    final vector = <int, double>{};
 
     for (final entry in profile.explicitFandomSignals.entries) {
       final value = _decay(
@@ -257,9 +259,13 @@ class RecommendationEngine {
 
       final divisor = sqrt(creator.fandoms.length);
       for (final fandom in creator.fandoms) {
-        final key = _normalizeFandom(fandom);
-        if (key.isEmpty) continue;
-        vector[key] = (vector[key] ?? 0) + totalStrength / divisor;
+        vector[fandom.id] = (vector[fandom.id] ?? 0) + totalStrength / divisor;
+        final parentId = fandom.parentId;
+        if (parentId != null &&
+            catalog.documentFrequency.containsKey(parentId)) {
+          vector[parentId] =
+              (vector[parentId] ?? 0) + totalStrength / divisor * 0.65;
+        }
       }
     }
 
@@ -269,9 +275,11 @@ class RecommendationEngine {
       if (creator == null || creator.fandoms.isEmpty) continue;
       final divisor = sqrt(creator.fandoms.length);
       for (final fandom in creator.fandoms) {
-        final key = _normalizeFandom(fandom);
-        if (key.isNotEmpty) {
-          vector[key] = (vector[key] ?? 0) + 10 / divisor;
+        vector[fandom.id] = (vector[fandom.id] ?? 0) + 10 / divisor;
+        final parentId = fandom.parentId;
+        if (parentId != null &&
+            catalog.documentFrequency.containsKey(parentId)) {
+          vector[parentId] = (vector[parentId] ?? 0) + 6.5 / divisor;
         }
       }
     }
@@ -287,18 +295,23 @@ class RecommendationEngine {
     final cached = _fandomCatalogs[creators];
     if (cached != null) return cached;
 
-    final frequency = <String, int>{};
-    final entriesByCreatorId = <int, List<_NormalizedFandom>>{};
-    final setsByCreatorId = <int, Set<String>>{};
-    final displayByNormalized = <String, String>{};
+    final frequency = <int, int>{};
+    final entriesByCreatorId = <int, List<Fandom>>{};
+    final setsByCreatorId = <int, Set<int>>{};
+    final displayById = <int, String>{};
     for (final creator in creators) {
-      final entries = _normalizedFandoms(creator);
-      final uniqueFandoms = entries.map((entry) => entry.normalized).toSet();
+      final entries = creator.fandoms;
+      final uniqueFandoms = <int>{
+        for (final entry in entries) ...[
+          entry.id,
+          if (entry.parentId != null) entry.parentId!,
+        ],
+      };
       for (final fandom in uniqueFandoms) {
         frequency[fandom] = (frequency[fandom] ?? 0) + 1;
       }
       for (final entry in entries) {
-        displayByNormalized.putIfAbsent(entry.normalized, () => entry.display);
+        displayById.putIfAbsent(entry.id, () => entry.name);
       }
       entriesByCreatorId[creator.id] = entries;
       setsByCreatorId[creator.id] = uniqueFandoms;
@@ -307,7 +320,7 @@ class RecommendationEngine {
       documentFrequency: frequency,
       entriesByCreatorId: entriesByCreatorId,
       setsByCreatorId: setsByCreatorId,
-      displayByNormalized: displayByNormalized,
+      displayById: displayById,
     );
     _fandomCatalogs[creators] = catalog;
     return catalog;
@@ -321,20 +334,25 @@ class RecommendationEngine {
     final cached = _fandomCatalogs[creators];
     if (cached != null) return cached;
 
-    final frequency = <String, int>{};
-    final entriesByCreatorId = <int, List<_NormalizedFandom>>{};
-    final setsByCreatorId = <int, Set<String>>{};
-    final displayByNormalized = <String, String>{};
+    final frequency = <int, int>{};
+    final entriesByCreatorId = <int, List<Fandom>>{};
+    final setsByCreatorId = <int, Set<int>>{};
+    final displayById = <int, String>{};
     for (var index = 0; index < creators.length; index++) {
       if (isCancelled?.call() ?? false) return null;
       final creator = creators[index];
-      final entries = _normalizedFandoms(creator);
-      final uniqueFandoms = entries.map((entry) => entry.normalized).toSet();
+      final entries = creator.fandoms;
+      final uniqueFandoms = <int>{
+        for (final entry in entries) ...[
+          entry.id,
+          if (entry.parentId != null) entry.parentId!,
+        ],
+      };
       for (final fandom in uniqueFandoms) {
         frequency[fandom] = (frequency[fandom] ?? 0) + 1;
       }
       for (final entry in entries) {
-        displayByNormalized.putIfAbsent(entry.normalized, () => entry.display);
+        displayById.putIfAbsent(entry.id, () => entry.name);
       }
       entriesByCreatorId[creator.id] = entries;
       setsByCreatorId[creator.id] = uniqueFandoms;
@@ -344,39 +362,33 @@ class RecommendationEngine {
       documentFrequency: frequency,
       entriesByCreatorId: entriesByCreatorId,
       setsByCreatorId: setsByCreatorId,
-      displayByNormalized: displayByNormalized,
+      displayById: displayById,
     );
     _fandomCatalogs[creators] = catalog;
     return catalog;
   }
 
-  List<_NormalizedFandom> _normalizedFandoms(Creator creator) {
-    return creator.fandoms
-        .map(
-          (fandom) => _NormalizedFandom(
-            display: fandom,
-            normalized: _normalizeFandom(fandom),
-          ),
-        )
-        .where((fandom) => fandom.normalized.isNotEmpty)
-        .toList();
-  }
-
   ({double affinity, List<String> matchingFandoms}) _fandomAffinity(
     Creator creator,
-    Map<String, double> interestVector,
+    Map<int, double> interestVector,
     _FandomCatalog catalog,
     int creatorCount,
   ) {
     final matches = <({String fandom, double value})>[];
     for (final fandom in catalog.entriesByCreatorId[creator.id] ?? const []) {
-      final interest = interestVector[fandom.normalized];
-      if (interest == null || interest <= 0) continue;
+      final directInterest = interestVector[fandom.id] ?? 0;
+      final parentInterest = fandom.parentId == null
+          ? 0.0
+          : (interestVector[fandom.parentId!] ?? 0) * 0.65;
+      final interest = max(directInterest, parentInterest);
+      if (interest <= 0) continue;
 
-      final frequency = catalog.documentFrequency[fandom.normalized] ?? 1;
+      final frequencyId =
+          parentInterest > directInterest ? fandom.parentId! : fandom.id;
+      final frequency = catalog.documentFrequency[frequencyId] ?? 1;
       final specificity =
           (log((creatorCount + 1) / (frequency + 1)) / 4).clamp(0.35, 1.0);
-      matches.add((fandom: fandom.display, value: interest * specificity));
+      matches.add((fandom: fandom.name, value: interest * specificity));
     }
     matches.sort((a, b) => b.value.compareTo(a.value));
 
@@ -458,7 +470,7 @@ class RecommendationEngine {
   List<RecommendationResult> _selectDiverse(
     List<RecommendationResult> candidates,
     int limit, {
-    required Map<int, Set<String>> normalizedFandoms,
+    required Map<int, Set<int>> fandomIdsByCreator,
   }) {
     final remaining = List<RecommendationResult>.from(candidates);
     final selected = <RecommendationResult>[];
@@ -472,8 +484,8 @@ class RecommendationEngine {
           maximumOverlap = max(
             maximumOverlap,
             _fandomOverlap(
-              normalizedFandoms[candidate.creator.id]!,
-              normalizedFandoms[existing.creator.id]!,
+              fandomIdsByCreator[candidate.creator.id]!,
+              fandomIdsByCreator[existing.creator.id]!,
             ),
           );
         }
@@ -495,7 +507,7 @@ class RecommendationEngine {
     List<RecommendationResult> candidates,
     int limit, {
     required _AsyncBudget budget,
-    required Map<int, Set<String>> normalizedFandoms,
+    required Map<int, Set<int>> fandomIdsByCreator,
     bool Function()? isCancelled,
   }) async {
     final remaining = List<RecommendationResult>.from(candidates);
@@ -512,8 +524,8 @@ class RecommendationEngine {
           maximumOverlap = max(
             maximumOverlap,
             _fandomOverlap(
-              normalizedFandoms[candidate.creator.id]!,
-              normalizedFandoms[existing.creator.id]!,
+              fandomIdsByCreator[candidate.creator.id]!,
+              fandomIdsByCreator[existing.creator.id]!,
             ),
           );
         }
@@ -533,7 +545,7 @@ class RecommendationEngine {
     return selected;
   }
 
-  double _fandomOverlap(Set<String> a, Set<String> b) {
+  double _fandomOverlap(Set<int> a, Set<int> b) {
     if (a.isEmpty || b.isEmpty) return 0;
     return a.intersection(b).length / a.union(b).length;
   }
@@ -556,31 +568,19 @@ class RecommendationEngine {
     final periods = elapsed / halfLife.inMilliseconds;
     return value * pow(0.5, periods);
   }
-
-  String _normalizeFandom(String fandom) => optimizeStringFormat(fandom);
 }
 
 class _FandomCatalog {
-  final Map<String, int> documentFrequency;
-  final Map<int, List<_NormalizedFandom>> entriesByCreatorId;
-  final Map<int, Set<String>> setsByCreatorId;
-  final Map<String, String> displayByNormalized;
+  final Map<int, int> documentFrequency;
+  final Map<int, List<Fandom>> entriesByCreatorId;
+  final Map<int, Set<int>> setsByCreatorId;
+  final Map<int, String> displayById;
 
   const _FandomCatalog({
     required this.documentFrequency,
     required this.entriesByCreatorId,
     required this.setsByCreatorId,
-    required this.displayByNormalized,
-  });
-}
-
-class _NormalizedFandom {
-  final String display;
-  final String normalized;
-
-  const _NormalizedFandom({
-    required this.display,
-    required this.normalized,
+    required this.displayById,
   });
 }
 

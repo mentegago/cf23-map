@@ -55,6 +55,23 @@ dijalankan dengan:
 dart run tools/benchmark_recommendation.dart
 ```
 
+### Data creator dan fandom
+
+App memakai API katalog v1 dari `https://cf23-config.nnt.gg`: manifest,
+katalog exhibitor, dan registry fandom terpisah. Salinan ketiganya dibundel
+agar first launch tetap bekerja tanpa koneksi. Untuk memperbarui fallback dari
+deployment:
+
+```bash
+python tools/fetch_creator_data.py
+```
+
+Saat mengembangkan bersama checkout lokal `cf23-data`, gunakan:
+
+```bash
+python tools/fetch_creator_data.py --source ../cf23-data/public
+```
+
 ## Kontribusi (Khusus buat developer)
 
 App ini merupakan app eksperimentasi saya, artinya saya bakal ngutak-ngatik terus app ini. Jika ada saran dan ingin contribute sesuatu, mungkin submit Issues dahulu. Kalau sudah oke, silakan submit PR. Mohon maaf atas keterbatasannya 🙇‍♂️

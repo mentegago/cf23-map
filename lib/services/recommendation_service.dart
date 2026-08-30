@@ -12,7 +12,7 @@ import '../utils/string_utils.dart';
 import 'recommendation_engine.dart';
 
 class RecommendationService extends ChangeNotifier {
-  static const String _storageKey = 'cf23_recommendation_profile_v1';
+  static const String _storageKey = 'cf23_recommendation_profile_v2';
   static const Duration _saveDelay = Duration(milliseconds: 500);
   static Future<BoothProximityData>? _boothProximityLoad;
 
@@ -248,14 +248,12 @@ class RecommendationService extends ChangeNotifier {
     _scheduleRecommendationRefresh();
   }
 
-  void recordFandomInterest(String fandom) {
+  void recordFandomInterest(int fandomId) {
     if (disabled) return;
-    final key = optimizeStringFormat(fandom);
-    if (key.isEmpty) return;
 
     final now = DateTime.now();
     final signal = _profile.explicitFandomSignals.putIfAbsent(
-      key,
+      fandomId,
       () => FandomSignal(strength: 0, lastUpdated: now),
     );
     signal.strength = (signal.strength + 5).clamp(0.0, 20.0);

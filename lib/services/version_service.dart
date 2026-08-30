@@ -14,15 +14,17 @@ class VersionInfo {
 
   factory VersionInfo.fromJson(Map<String, dynamic> json) {
     return VersionInfo(
-      currentVersion: json['current_version'] as int,
-      releaseNotes: json['release_notes'] as String,
-      creatorDataVersion: json['creator_data_version'] as int,
+      currentVersion: (json['current_version'] as num?)?.toInt() ?? 0,
+      releaseNotes: json['release_notes']?.toString() ?? '',
+      creatorDataVersion:
+          (json['creator_data_version'] as num?)?.toInt() ?? 0,
     );
   }
 }
 
 class VersionService {
-  static const String _versionUrl = 'https://cf23-config.nnt.gg/version.json';
+  static const String _versionUrl =
+      'https://cf23-config.nnt.gg/last-updated.json';
   static const int _clientVersion = 16; // Current client version
 
   static Future<VersionInfo?> fetchVersionInfo() async {

@@ -3,16 +3,33 @@ import 'dart:io';
 
 import 'package:cf_map_flutter/models/booth_proximity.dart';
 import 'package:cf_map_flutter/models/creator.dart';
+import 'package:cf_map_flutter/models/fandom.dart';
 import 'package:cf_map_flutter/models/recommendation.dart';
 import 'package:cf_map_flutter/services/recommendation_engine.dart';
 
 Future<void> main(List<String> arguments) async {
   final iterations = arguments.isEmpty ? 25 : int.parse(arguments.first);
-  final creatorData = json.decode(
-    await File('data/creator-data-initial.json').readAsString(),
+  final catalog = json.decode(
+    await File('data/catalog-initial.json').readAsString(),
   ) as Map<String, dynamic>;
-  final creators = (creatorData['creators'] as List<dynamic>)
-      .map((value) => Creator.fromJson(value as Map<String, dynamic>))
+  final registry = json.decode(
+    await File('data/fandoms-initial.json').readAsString(),
+  ) as Map<String, dynamic>;
+  final fandoms = (registry['fandoms'] as List<dynamic>)
+      .map((value) => Fandom.fromJson(value as Map<String, dynamic>))
+      .toList();
+  final fandomById = {for (final fandom in fandoms) fandom.id: fandom};
+  final event = catalog['event'] as Map<String, dynamic>;
+  final dayLabels = {
+    for (final day in event['days'] as List<dynamic>)
+      (day as Map<String, dynamic>)['id'].toString(): day['label'].toString(),
+  };
+  final creators = (catalog['exhibitors'] as List<dynamic>)
+      .map((value) => Creator.fromCatalogJson(
+            value as Map<String, dynamic>,
+            fandomById: fandomById,
+            dayLabels: dayLabels,
+          ))
       .toList();
   final proximity = BoothProximityData.fromJson(
     json.decode(await File('data/booth-proximity.json').readAsString())

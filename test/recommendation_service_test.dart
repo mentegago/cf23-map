@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cf_map_flutter/models/creator.dart';
+import 'package:cf_map_flutter/models/fandom.dart';
 import 'package:cf_map_flutter/models/recommendation.dart';
 import 'package:cf_map_flutter/services/recommendation_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,11 +10,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Creator testCreator(int id) => Creator(
       id: id,
-      userId: 'user-$id',
       name: 'Creator $id',
-      booths: ['A-$id'],
-      day: 'BOTH',
-      fandoms: const ['Blue Archive'],
+      spaces: [CreatorSpace(code: 'A-$id')],
+      attendanceDayIds: const ['day-1', 'day-2'],
+      fandoms: [
+        Fandom(
+          id: 1,
+          name: 'Blue Archive',
+          kind: 'franchise',
+          parentId: null,
+        ),
+      ],
     );
 
 void main() {
@@ -105,14 +113,20 @@ void main() {
       testCreator(1),
       Creator(
         id: 2,
-        userId: 'user-2',
         name: 'Creator 2',
-        booths: const ['A-2'],
-        day: 'BOTH',
-        fandoms: const ['Hololive'],
+        spaces: const [CreatorSpace(code: 'A-2')],
+        attendanceDayIds: const ['day-1', 'day-2'],
+        fandoms: [
+          Fandom(
+            id: 2,
+            name: 'Hololive',
+            kind: 'publisher_umbrella',
+            parentId: null,
+          ),
+        ],
       ),
     ];
-    service.recordFandomInterest('Blue Archive');
+    service.recordFandomInterest(1);
     final popular = [
       'Hololive',
       'Blue Archive',
@@ -130,6 +144,23 @@ void main() {
     expect(
         suggestions.where((fandom) => fandom == 'Blue Archive'), hasLength(1));
     expect(suggestions[1], 'Hololive');
+    service.dispose();
+  });
+
+  test('fandom interest persists by canonical fandom ID', () async {
+    final service = RecommendationService();
+    await service.initialize();
+
+    service.recordFandomInterest(34);
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+
+    final raw = (await SharedPreferences.getInstance())
+        .getString('cf23_recommendation_profile_v2');
+    expect(raw, isNotNull);
+    final profile = json.decode(raw!) as Map<String, dynamic>;
+    final fandomSignals =
+        profile['explicit_fandom_signals'] as Map<String, dynamic>;
+    expect(fandomSignals.keys, contains('34'));
     service.dispose();
   });
 
@@ -154,9 +185,9 @@ void main() {
       if (!completer.isCompleted) completer.complete();
     });
 
-    service.recordFandomInterest('Blue Archive');
+    service.recordFandomInterest(1);
     await Future<void>.delayed(const Duration(milliseconds: 30));
-    service.recordFandomInterest('Hololive');
+    service.recordFandomInterest(2);
 
     final immediate = service.recommendationsFor(
       creators: creators,
@@ -173,7 +204,7 @@ void main() {
     );
     expect(published, isNotEmpty);
 
-    service.recordFandomInterest('Touhou');
+    service.recordFandomInterest(3);
     expect(
       service.recommendationsFor(
           creators: creators,
@@ -189,7 +220,7 @@ void main() {
     final creator = testCreator(1);
 
     service.recordCreatorOpened(creator, CreatorSelectionSource.deepLink);
-    service.recordFandomInterest('Blue Archive');
+    service.recordFandomInterest(1);
     service.recordSampleWorksViewed(creator);
     service.recordExternalLinkOpened(creator);
     service.recordCreatorShared(creator);

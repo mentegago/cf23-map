@@ -68,15 +68,15 @@ class _CreatorTileState extends State<CreatorTile> {
           children: [
             ListTile(
               leading: CreatorAvatar(creator: widget.creator),
-              trailing: widget.creator.sampleworksImages.isNotEmpty
+              trailing: widget.creator.assets.gallery.isNotEmpty
                   ? IconButton(
-                      icon: widget.creator.sampleworksImages.length > 1
+                      icon: widget.creator.assets.gallery.length > 1
                           ? const Icon(Icons.photo_library)
                           : const Icon(Icons.photo),
                       onPressed: () {
                         showSampleWorksGallery(
                           context: context,
-                          imageUrls: widget.creator.sampleworksImages,
+                          imageUrls: widget.creator.assets.gallery,
                           creator: widget.creator,
                         );
                       },

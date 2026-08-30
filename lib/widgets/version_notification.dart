@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
 import '../services/analytics_service.dart';
 import '../services/version_service.dart';
+import '../utils/browser_navigation.dart';
 
 class VersionNotification extends StatefulWidget {
   const VersionNotification({super.key, required this.isDesktop});
@@ -85,7 +85,7 @@ class _VersionNotificationState extends State<VersionNotification>
 
   void _refreshPage() {
     umami.trackEvent(name: 'update_notification_refreshed');
-    html.window.location.reload();
+    browserReload();
   }
 
   @override
