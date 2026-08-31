@@ -5,11 +5,11 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/creator.dart';
 import '../models/fandom.dart';
 import '../utils/browser_navigation.dart';
+import 'catalog_snapshot_cache.dart';
 import 'creator_catalog_index.dart';
 import 'version_service.dart';
 
@@ -17,15 +17,17 @@ enum CreatorDataStatus { idle, loading, updating, updated, error }
 
 class CreatorDataProvider extends ChangeNotifier {
   static final Uri _configBase = Uri.parse('https://cf23-config.nnt.gg/');
-  static const String _cacheKey = 'cf23_catalog_snapshot_v3';
-  static const String _cacheVersionKey = 'cf23_catalog_snapshot_version_v3';
   static const String _bundledCatalog = 'data/catalog-initial.json';
   static const String _bundledFandoms = 'data/fandoms-initial.json';
   static const String _bundledVersion = 'data/last-updated-initial.json';
 
   final bool enableRemoteUpdates;
+  final CatalogSnapshotCache _snapshotCache;
 
-  CreatorDataProvider({this.enableRemoteUpdates = true});
+  CreatorDataProvider({
+    this.enableRemoteUpdates = true,
+    CatalogSnapshotCache? snapshotCache,
+  }) : _snapshotCache = snapshotCache ?? CatalogSnapshotCache();
 
   List<Creator>? _allCreators;
   Map<int, Fandom> _fandomById = const {};
@@ -112,15 +114,13 @@ class CreatorDataProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
       final bundledVersion = await _loadBundledVersion();
-      final preferences = await SharedPreferences.getInstance();
-      final cachedVersion = preferences.getInt(_cacheVersionKey);
-      final cached = cachedVersion != null && cachedVersion >= bundledVersion
-          ? await _loadCachedSnapshot(preferences)
-          : null;
+      final cached = await _loadCachedSnapshot();
+      final usableCache =
+          cached != null && cached.version >= bundledVersion ? cached : null;
       final snapshot =
-          cached ?? await _loadBundledSnapshot(version: bundledVersion);
+          usableCache ?? await _loadBundledSnapshot(version: bundledVersion);
       _applySnapshot(snapshot);
-      if (cached == null) await _cacheSnapshot(snapshot);
+      if (usableCache == null) await _cacheSnapshot(snapshot);
       if (enableRemoteUpdates) _startPeriodicUpdateCheck();
     } catch (error, stackTrace) {
       if (kDebugMode) {
@@ -179,11 +179,9 @@ class CreatorDataProvider extends ChangeNotifier {
     );
   }
 
-  Future<_CatalogSnapshot?> _loadCachedSnapshot(
-    SharedPreferences preferences,
-  ) async {
+  Future<_CatalogSnapshot?> _loadCachedSnapshot() async {
     try {
-      final raw = preferences.getString(_cacheKey);
+      final raw = await _snapshotCache.read();
       if (raw == null) return null;
       final data = json.decode(raw) as Map<String, dynamic>;
       return _CatalogSnapshot.fromJson(
@@ -261,19 +259,10 @@ class CreatorDataProvider extends ChangeNotifier {
   }
 
   Future<void> _cacheSnapshot(_CatalogSnapshot snapshot) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(
-      _cacheKey,
-      json.encode(snapshot.toJson()),
-    );
-    await preferences.setInt(_cacheVersionKey, snapshot.version);
+    await _snapshotCache.write(json.encode(snapshot.toJson()));
   }
 
-  Future<void> clearCache() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_cacheKey);
-    await preferences.remove(_cacheVersionKey);
-  }
+  Future<void> clearCache() => _snapshotCache.clear();
 
   void _setLoading(bool loading) {
     _isLoading = loading;
