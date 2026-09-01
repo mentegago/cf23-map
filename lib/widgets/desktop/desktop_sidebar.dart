@@ -6,6 +6,7 @@ import '../../services/creator_data_service.dart';
 import '../../utils/int_encoding.dart';
 import '../creator_detail_content.dart';
 import '../creator_list_view.dart';
+import '../../design_system/cf_design_system.dart';
 
 class DesktopSidebar extends StatefulWidget {
   final List<Creator> creators;
@@ -96,11 +97,11 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
     return Container(
       width: 400,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: context.cf.paperRaised,
         border: Border(
           right: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.2),
-            width: 1,
+            color: context.cf.ink,
+            width: 2,
           ),
         ),
       ),
@@ -113,7 +114,14 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
             ),
-            child: _buildSearchField(context, theme, isDark),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CfKicker('CF23 creator directory'),
+                const SizedBox(height: 10),
+                _buildSearchField(context, theme, isDark),
+              ],
+            ),
           ),
 
           // Content section
@@ -134,19 +142,16 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
   Widget _buildSearchField(BuildContext context, ThemeData theme, bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-          width: 0.8,
+        color: context.cf.paper,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(5),
+          bottomLeft: Radius.circular(5),
+          bottomRight: Radius.circular(16),
         ),
+        border: Border.all(color: context.cf.ink, width: 1.5),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: context.cf.cyan, offset: const Offset(3, 3))
         ],
       ),
       child: Row(
@@ -178,9 +183,9 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
               },
             )
           else
-            const Padding(
-              padding: EdgeInsets.only(left: 16),
-              child: Icon(Icons.search, color: Colors.grey),
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: Icon(Icons.search, color: context.cf.pink),
             ),
           Expanded(
             child: TextField(

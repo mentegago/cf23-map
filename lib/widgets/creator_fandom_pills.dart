@@ -1,39 +1,62 @@
 import 'package:flutter/material.dart';
 
-class CreatorFandomPills extends StatelessWidget {
+class CreatorFandomSummary extends StatelessWidget {
   final List<String> fandoms;
+  final int maxVisible;
 
-  const CreatorFandomPills({
+  const CreatorFandomSummary({
     super.key,
     required this.fandoms,
+    this.maxVisible = 4,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
+      height: 1.25,
+    );
+    final visibleFandoms = fandoms.take(maxVisible).toList(growable: false);
+    final hiddenFandoms = fandoms.skip(maxVisible).toList(growable: false);
 
-    return SizedBox(
-      height: 32,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: fandoms.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (context, index) {
-          final fandom = fandoms[index];
-
-          return Chip(
-            label: Text(
-              fandom,
-              style: theme.textTheme.labelSmall,
+    return Wrap(
+      spacing: 7,
+      runSpacing: 3,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (var index = 0; index < visibleFandoms.length; index++) ...[
+          if (index > 0)
+            Container(
+              width: 3,
+              height: 3,
+              decoration: BoxDecoration(
+                color:
+                    theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                shape: BoxShape.circle,
+              ),
             ),
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            side: BorderSide(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          Text(visibleFandoms[index], style: textStyle),
+        ],
+        if (hiddenFandoms.isNotEmpty) ...[
+          Container(
+            width: 3,
+            height: 3,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+              shape: BoxShape.circle,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-          );
-        },
-      ),
+          ),
+          Text(
+            '+${hiddenFandoms.length} more',
+            style: textStyle?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

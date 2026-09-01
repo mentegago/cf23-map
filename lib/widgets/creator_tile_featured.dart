@@ -2,6 +2,7 @@ import 'package:cf_map_flutter/widgets/creator_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
+import '../design_system/cf_design_system.dart';
 import '../models/creator.dart';
 import 'sample_works_gallery.dart';
 
@@ -49,10 +50,6 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Use a static color for the featured creator tile.
-    const Color staticFeaturedColor =
-        Color.fromARGB(255, 25, 210, 40); // blue 700
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -60,37 +57,26 @@ class _CreatorTileFeaturedState extends State<CreatorTileFeatured> {
           cursor: SystemMouseCursors.click,
           onHover: _handleHover,
           onExit: _handleExit,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  staticFeaturedColor.withValues(alpha: 0.1),
-                  staticFeaturedColor.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: staticFeaturedColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
+          child: CfPanel(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+            accent: context.cf.cyan,
+            padding: EdgeInsets.zero,
             child: Container(
               color: _isHovered
-                  ? theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.2)
+                  ? context.cf.cyan.withValues(alpha: 0.16)
                   : Colors.transparent,
               child: ListTile(
+                mouseCursor: SystemMouseCursors.click,
                 leading: CreatorAvatar(creator: widget.creator),
                 title: Text(
                   widget.creator.name,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                  '${widget.creator.boothsDisplay} • ${widget.creator.dayDisplay}',
+                  '${widget.creator.boothsDisplay}  /  ${widget.creator.dayDisplay}',
                   style: TextStyle(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600),
                 ),
                 trailing: widget.creator.assets.gallery.isNotEmpty
                     ? IconButton(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/creator.dart';
+import '../design_system/cf_theme.dart';
 
 class CreatorAvatar extends StatelessWidget {
   final Creator creator;
@@ -14,14 +15,29 @@ class CreatorAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final section = _getBoothSection(creator);
-    return CircleAvatar(
-      backgroundColor: _getSectionColor(section),
-      radius: radius,
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: _getSectionColor(section),
+        border: Border.all(color: const Color(0xFF191522), width: 1.5),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(3),
+          bottomLeft: Radius.circular(3),
+          bottomRight: Radius.circular(12),
+        ),
+        boxShadow: [
+          BoxShadow(color: context.cf.hardShadow, offset: const Offset(2, 2)),
+        ],
+      ),
+      alignment: Alignment.center,
       child: Text(
         section,
         style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
+          color: Color(0xFF191522),
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.5,
         ),
       ),
     );
@@ -41,14 +57,14 @@ class CreatorAvatar extends StatelessWidget {
 
   Color _getSectionColor(String section) {
     const List<Color> palette = [
-      Color(0xFF1976D2), // blue 700
-      Color(0xFF388E3C), // green 600
-      Color(0xFFEF6C00), // orange 800
-      Color(0xFF7B1FA2), // purple 700
-      Color(0xFFD32F2F), // red 700
-      Color(0xFF00838F), // cyan 800
-      Color(0xFF558B2F), // light green 700
-      Color(0xFFFF8F00), // amber 800
+      Color(0xFFFF87B8),
+      Color(0xFF70E2EE),
+      Color(0xFFFFD84D),
+      Color(0xFFA996FF),
+      Color(0xFFFF9D7C),
+      Color(0xFF7DE0A3),
+      Color(0xFFFF9BD0),
+      Color(0xFF8CB8F5),
     ];
     final idx = section.codeUnitAt(0) % palette.length;
     return palette[idx];

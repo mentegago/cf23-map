@@ -10,6 +10,8 @@ import '../models/recommendation.dart';
 import '../services/analytics_service.dart';
 import '../services/recommendation_service.dart';
 import '../utils/browser_navigation.dart';
+import '../utils/creator_fandom_ordering.dart';
+import '../design_system/cf_design_system.dart';
 
 class CreatorListView extends StatefulWidget {
   final List<Creator> creators;
@@ -22,6 +24,7 @@ class CreatorListView extends StatefulWidget {
   final Function(String)? onSearchQueryChanged;
   final bool showFandomSuggestions;
   final ScrollPhysics? scrollPhysics;
+  final double bottomPadding;
 
   const CreatorListView({
     super.key,
@@ -35,6 +38,7 @@ class CreatorListView extends StatefulWidget {
     this.onSearchQueryChanged,
     this.showFandomSuggestions = true,
     this.scrollPhysics,
+    this.bottomPadding = 0,
   });
 
   @override
@@ -115,6 +119,10 @@ class _CreatorListViewState extends State<CreatorListView> {
           .where((creator) => !favoriteIds.contains(creator.id)),
     ];
     final fandomSuggestions = _fandomSuggestions;
+    final matchingFandoms = context
+        .read<CreatorDataProvider>()
+        .matchingFandomNames(widget.searchQuery);
+    final xList = _homeFandomSuggestions(favoriteIds);
     final hasFandomSuggestions = widget.showFandomSuggestions &&
         fandomSuggestions.isNotEmpty &&
         _lastSelectedFandom == null;
@@ -134,6 +142,7 @@ class _CreatorListViewState extends State<CreatorListView> {
     return ListView.builder(
       controller: widget.scrollController,
       physics: widget.scrollPhysics,
+      padding: EdgeInsets.only(bottom: widget.bottomPadding),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         // Fandom suggestions section (first if present)
@@ -201,6 +210,11 @@ class _CreatorListViewState extends State<CreatorListView> {
         return CreatorTile(
           creator: creator,
           onCreatorSelected: widget.onCreatorSelected,
+          fandoms: orderCreatorFandoms(
+            fandoms: creator.fandomNames,
+            interestOrder: matchingFandoms,
+            xList: xList,
+          ),
         );
       },
     );
@@ -273,6 +287,7 @@ class _CreatorListViewState extends State<CreatorListView> {
     return ListView.builder(
       controller: widget.scrollController,
       physics: widget.scrollPhysics,
+      padding: EdgeInsets.only(bottom: widget.bottomPadding),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         return _buildItemAtIndex(
@@ -280,6 +295,7 @@ class _CreatorListViewState extends State<CreatorListView> {
             theme,
             favorites,
             recommendations,
+            fandomSuggestions,
             fandomSuggestions,
             isCreatorCustomListMode,
             showAddAllToFavorites,
@@ -295,6 +311,7 @@ class _CreatorListViewState extends State<CreatorListView> {
     List<Creator> favorites,
     List<RecommendationResult> recommendations,
     List<String> fandomSuggestions,
+    List<String> xList,
     bool isCreatorCustomListMode,
     bool showAddAllToFavorites,
     bool shouldRefreshOnReturn,
@@ -341,6 +358,11 @@ class _CreatorListViewState extends State<CreatorListView> {
         return CreatorTile(
           creator: favorites[favoriteIndex],
           onCreatorSelected: widget.onCreatorSelected,
+          fandoms: orderCreatorFandoms(
+            fandoms: favorites[favoriteIndex].fandomNames,
+            xList: xList,
+            originalFirst: true,
+          ),
         );
       }
       currentIndex += favorites.length;
@@ -384,7 +406,11 @@ class _CreatorListViewState extends State<CreatorListView> {
         return CreatorTile(
           creator: creator,
           onCreatorSelected: onSelected,
-          recommendationFandoms: recommendation.matchingFandoms,
+          fandoms: orderCreatorFandoms(
+            fandoms: creator.fandomNames,
+            interestOrder: recommendation.matchingFandoms,
+            xList: xList,
+          ),
         );
       }
       currentIndex += recommendations.length;
@@ -422,12 +448,27 @@ class _CreatorListViewState extends State<CreatorListView> {
       return CreatorTile(
         creator: _filteredCreators[creatorIndex],
         onCreatorSelected: widget.onCreatorSelected,
+        fandoms: orderCreatorFandoms(
+          fandoms: _filteredCreators[creatorIndex].fandomNames,
+          xList: xList,
+          originalFirst: true,
+        ),
       );
     }
 
     currentIndex += _filteredCreators.length;
 
     return const SizedBox.shrink();
+  }
+
+  List<String> _homeFandomSuggestions(Set<int> favoriteIds) {
+    final data = context.read<CreatorDataProvider>();
+    if (data.isCreatorCustomListMode) return data.popularSearches;
+    return context.read<RecommendationService>().homeFandomSuggestionsFor(
+          creators: widget.creators,
+          favoriteIds: favoriteIds,
+          popularFandoms: data.popularSearches,
+        );
   }
 }
 
@@ -471,28 +512,14 @@ class _SeeAllCreatorsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.16),
-          width: 1,
-        ),
-      ),
+    return CfPanel(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
+      accent: context.cf.pink,
       child: Column(
         spacing: 16,
         children: [
+          const CfKicker('Curated route'),
           const Text(
             "You're viewing a curated creator list. Only the creators selected by the list owner are shown on the map.",
             textAlign: TextAlign.center,
@@ -543,28 +570,10 @@ class _AddAllToFavoritesButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          backgroundColor: const Color.fromARGB(255, 221, 41, 101),
-          foregroundColor: Colors.white,
-          textStyle: const TextStyle(color: Colors.white),
-        ),
-        icon: const Icon(Icons.add, size: 16, color: Colors.white),
-        label: const Text(
-          'Add All to Favorites',
-          style: TextStyle(
-            fontWeight: FontWeight.w400,
-            fontSize: 13,
-            letterSpacing: 0.1,
-            color: Colors.white,
-          ),
-        ),
+      child: CfActionButton(
+        icon: Icons.add,
+        label: 'Add All to Favorites',
+        color: context.cf.pink,
         onPressed: () {
           final favoritesService = context.read<FavoritesService>();
           final beforeCount = favoritesService.favoriteCount;
@@ -606,25 +615,10 @@ class _ShareFavorites extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          visualDensity: VisualDensity.compact,
-          backgroundColor: const Color.fromARGB(255, 221, 41, 101),
-          foregroundColor: Colors.white,
-          textStyle: const TextStyle(color: Colors.white),
-        ),
-        icon: const Icon(Icons.share, size: 16, color: Colors.white),
-        label: const Text(
-          'Share Favorites',
-          style: TextStyle(
-            fontWeight: FontWeight.w400,
-            fontSize: 13,
-            letterSpacing: 0.1,
-            color: Colors.white,
-          ),
-        ),
+      child: CfActionButton(
+        icon: Icons.share,
+        label: 'Share Favorites',
+        color: context.cf.cyan,
         onPressed: () => _shareFavorites(
           context,
           source: 'main_button',
@@ -759,15 +753,10 @@ class _FandomSuggestions extends StatelessWidget {
           children: suggestions.map((fandom) {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ActionChip(
-                label: Text(
-                  fandom,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                onPressed: () {
+              child: CfTag(
+                label: fandom,
+                color: context.cf.cyan.withValues(alpha: 0.22),
+                onTap: () {
                   final fandomId = context
                       .read<CreatorDataProvider>()
                       .fandomIdForName(fandom);
@@ -781,14 +770,6 @@ class _FandomSuggestions extends StatelessWidget {
                   );
                   onSuggestionSelected?.call(fandom);
                 },
-                backgroundColor:
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                side: BorderSide(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                visualDensity: VisualDensity.compact,
               ),
             );
           }).toList(),

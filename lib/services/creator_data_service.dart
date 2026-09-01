@@ -88,6 +88,9 @@ class CreatorDataProvider extends ChangeNotifier {
   List<String> fandomSuggestions(String query, {int limit = 20}) =>
       _activeIndex?.fandomSuggestions(query, limit: limit) ?? const [];
 
+  List<String> matchingFandomNames(String query, {int limit = 20}) =>
+      _activeIndex?.matchingFandomNames(query, limit: limit) ?? const [];
+
   void setCreatorCustomList(
     List<int> creatorIds, {
     bool showAddAllToFavorites = true,

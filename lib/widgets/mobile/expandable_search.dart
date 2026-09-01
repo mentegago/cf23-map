@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/analytics_service.dart';
@@ -8,6 +9,7 @@ import '../../services/recommendation_service.dart';
 import '../../utils/int_encoding.dart';
 import '../creator_list_view.dart';
 import 'mobile_sheet_detent.dart';
+import '../../design_system/cf_design_system.dart';
 
 class ExpandableSearch extends StatefulWidget {
   final List<Creator> creators;
@@ -40,7 +42,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   MobileSearchSheetDetent _detent = MobileSearchSheetDetent.collapsed;
   double _collapsedExtent = 0.18;
   double _extent = 0.18;
-  double _bottomSafeArea = MobileSearchSheetLayout.minimumBottomSafeArea;
+  double _bottomSafeArea = 0;
   double? _dragStartExtent;
 
   MobileSearchSheetDetent get currentDetent {
@@ -117,16 +119,19 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final mediaQuery = MediaQuery.of(context);
-    final reportedBottomSafeArea =
-        mediaQuery.padding.bottom > mediaQuery.viewPadding.bottom
-            ? mediaQuery.padding.bottom
-            : mediaQuery.viewPadding.bottom;
+    // viewPadding is the persistent system inset and does not fluctuate with
+    // the keyboard. Flutter Web can report zero on iOS Safari despite the home
+    // indicator, so only that platform receives a small gesture-area fallback.
+    final reportedBottomSafeArea = mediaQuery.viewPadding.bottom;
+    final needsIosGestureFallback =
+        kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     _bottomSafeArea = MobileSearchSheetLayout.effectiveBottomSafeArea(
       reportedBottomSafeArea,
+      useGestureNavigationFallback: needsIosGestureFallback,
     );
     final nextCollapsedExtent = MobileSearchSheetLayout.collapsedExtent(
       availableHeight: mediaQuery.size.height,
-      bottomSafeArea: reportedBottomSafeArea,
+      bottomSafeArea: _bottomSafeArea,
     );
     final wasCollapsed = currentDetent == MobileSearchSheetDetent.collapsed;
     if ((_collapsedExtent - nextCollapsedExtent).abs() < 0.001) return;
@@ -414,6 +419,11 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     final contentOpacity = ((_extent - _collapsedExtent) /
             (MobileSheetDetent.expanded.extent - _collapsedExtent))
         .clamp(0.0, 1.0);
+    final collapsedHeaderBottomInset =
+        MobileSearchSheetLayout.collapsedHeaderBottomInset(
+      bottomSafeArea: _bottomSafeArea,
+      expansionProgress: contentOpacity,
+    );
 
     return DraggableScrollableSheet(
       controller: _sheetController,
@@ -429,9 +439,12 @@ class ExpandableSearchState extends State<ExpandableSearch> {
           builder: (context, constraints) {
             return Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
+                color: context.cf.paperRaised,
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: context.cf.ink, width: 1.5),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.18),
@@ -442,52 +455,51 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                 ],
               ),
               clipBehavior: Clip.antiAlias,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: _bottomSafeArea),
-                child: Column(
-                  children: [
-                    _buildSheetHeader(
-                      context,
-                      isDark: isDark,
-                      availableHeight: constraints.maxHeight /
-                          (_sheetController.isAttached
-                              ? _sheetController.size
-                              : _extent),
-                    ),
-                    Expanded(
-                      child: IgnorePointer(
-                        ignoring: contentOpacity < 0.95,
-                        child: Opacity(
-                          opacity: contentOpacity,
-                          child: ValueListenableBuilder<TextEditingValue>(
-                            valueListenable: _searchController,
-                            builder: (context, value, _) {
-                              return CreatorListView(
-                                creators: widget.creators,
-                                searchQuery: value.text,
-                                onCreatorSelected: _handleCreatorTap,
-                                onRecommendationSelected:
-                                    _handleRecommendationTap,
-                                scrollController: sheetScrollController,
-                                onShouldHideListScreen: _collapse,
-                                onClearSearch: () {
-                                  _searchController.clear();
-                                  _performSearch('');
-                                },
-                                onSearchQueryChanged: (query) {
-                                  _searchController.text = query;
-                                  _performSearch(query);
-                                },
-                                showFandomSuggestions: false,
-                                scrollPhysics: const ClampingScrollPhysics(),
-                              );
-                            },
-                          ),
+              child: Column(
+                children: [
+                  _buildSheetHeader(
+                    context,
+                    isDark: isDark,
+                    bottomInset: collapsedHeaderBottomInset,
+                    availableHeight: constraints.maxHeight /
+                        (_sheetController.isAttached
+                            ? _sheetController.size
+                            : _extent),
+                  ),
+                  Expanded(
+                    child: IgnorePointer(
+                      ignoring: contentOpacity < 0.95,
+                      child: Opacity(
+                        opacity: contentOpacity,
+                        child: ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _searchController,
+                          builder: (context, value, _) {
+                            return CreatorListView(
+                              creators: widget.creators,
+                              searchQuery: value.text,
+                              onCreatorSelected: _handleCreatorTap,
+                              onRecommendationSelected:
+                                  _handleRecommendationTap,
+                              scrollController: sheetScrollController,
+                              onShouldHideListScreen: _collapse,
+                              onClearSearch: () {
+                                _searchController.clear();
+                                _performSearch('');
+                              },
+                              onSearchQueryChanged: (query) {
+                                _searchController.text = query;
+                                _performSearch(query);
+                              },
+                              showFandomSuggestions: false,
+                              scrollPhysics: const ClampingScrollPhysics(),
+                              bottomPadding: _bottomSafeArea,
+                            );
+                          },
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
@@ -500,6 +512,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     BuildContext context, {
     required bool isDark,
     required double availableHeight,
+    required double bottomInset,
   }) {
     final theme = Theme.of(context);
 
@@ -538,40 +551,27 @@ class ExpandableSearchState extends State<ExpandableSearch> {
       },
       child: Column(
         children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 8, bottom: 6),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.28),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
+          const Center(child: CfSheetGrip()),
           Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                width: 0.8,
+              color: context.cf.paper,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(5),
+                bottomLeft: Radius.circular(5),
+                bottomRight: Radius.circular(16),
               ),
+              border: Border.all(color: context.cf.ink, width: 1.5),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: context.cf.cyan, offset: const Offset(3, 3)),
               ],
             ),
             child: Row(
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: 16),
-                  child: Icon(Icons.search, color: Colors.grey),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Icon(Icons.search, color: context.cf.pink),
                 ),
                 Expanded(
                   child: TextField(
@@ -612,9 +612,9 @@ class ExpandableSearchState extends State<ExpandableSearch> {
             valueListenable: _searchController,
             builder: (context, value, _) {
               final suggestions = _headerFandomSuggestions(context, value.text);
-              if (suggestions.isEmpty) return const SizedBox(height: 48);
+              if (suggestions.isEmpty) return const SizedBox(height: 36);
               return SizedBox(
-                height: 48,
+                height: 36,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -622,35 +622,32 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final fandom = suggestions[index];
-                    return ActionChip(
-                      label: Text(fandom, style: const TextStyle(fontSize: 12)),
-                      onPressed: () {
-                        final fandomId = context
-                            .read<CreatorDataProvider>()
-                            .fandomIdForName(fandom);
-                        umami.trackEvent(
-                          name: 'fandom_tapped',
-                          data: {
-                            'source': 'search_suggestion',
-                            'fandom': fandom,
-                            if (fandomId != null)
-                              'fandom_id': fandomId.toString(),
-                          },
-                        );
-                        if (fandomId != null) {
-                          context
-                              .read<RecommendationService>()
-                              .recordFandomInterest(fandomId);
-                        }
-                        _focusNode.unfocus();
-                        performSearch(fandom);
-                      },
-                      backgroundColor: theme.colorScheme.primaryContainer
-                          .withValues(alpha: 0.5),
-                      side: BorderSide(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    return Center(
+                      child: CfTag(
+                        label: fandom,
+                        color: context.cf.cyan.withValues(alpha: 0.22),
+                        onTap: () {
+                          final fandomId = context
+                              .read<CreatorDataProvider>()
+                              .fandomIdForName(fandom);
+                          umami.trackEvent(
+                            name: 'fandom_tapped',
+                            data: {
+                              'source': 'search_suggestion',
+                              'fandom': fandom,
+                              if (fandomId != null)
+                                'fandom_id': fandomId.toString(),
+                            },
+                          );
+                          if (fandomId != null) {
+                            context
+                                .read<RecommendationService>()
+                                .recordFandomInterest(fandomId);
+                          }
+                          _focusNode.unfocus();
+                          performSearch(fandom);
+                        },
                       ),
-                      visualDensity: VisualDensity.compact,
                     );
                   },
                 ),
@@ -658,6 +655,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
             },
           ),
           const SizedBox(height: 4),
+          SizedBox(height: bottomInset),
         ],
       ),
     );

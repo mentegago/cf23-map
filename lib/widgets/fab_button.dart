@@ -7,6 +7,7 @@ import '../services/analytics_service.dart';
 import '../services/creator_data_service.dart';
 import '../models/recommendation.dart';
 import '../services/recommendation_service.dart';
+import '../design_system/cf_design_system.dart';
 
 class FABButton extends StatelessWidget {
   const FABButton({super.key, required this.isDesktop});
@@ -33,79 +34,47 @@ class FABButton extends StatelessWidget {
     );
   }
 
-  Container _randomButton(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () {
-          final creator =
-              context.read<CreatorDataProvider>().selectRandomCreator();
-          if (creator != null) {
-            context.read<RecommendationService>().recordCreatorOpened(
-                  creator,
-                  CreatorSelectionSource.randomButton,
-                );
-            umami.trackEvent(
-              name: 'creator_selected',
-              data: {
-                'creator_id': creator.id.toString(),
-                'creator_name': creator.name,
-                'source': 'surprise_fab',
-              },
-            );
-          }
-        },
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            spacing: 8,
-            children: [
-              Icon(Icons.auto_awesome, size: 24),
-              Text("Surprise me!"),
-            ],
-          ),
-        ),
-      ),
+  Widget _randomButton(BuildContext context) {
+    return CfActionButton(
+      label: 'Surprise me!',
+      icon: Icons.auto_awesome,
+      color: context.cf.yellow,
+      onPressed: () {
+        final creator =
+            context.read<CreatorDataProvider>().selectRandomCreator();
+        if (creator != null) {
+          context.read<RecommendationService>().recordCreatorOpened(
+                creator,
+                CreatorSelectionSource.randomButton,
+              );
+          umami.trackEvent(
+            name: 'creator_selected',
+            data: {
+              'creator_id': creator.id.toString(),
+              'creator_name': creator.name,
+              'source': 'surprise_fab',
+            },
+          );
+        }
+      },
     );
   }
 
-  Container _githubButton(BuildContext context, String githubIcon) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+  Widget _githubButton(BuildContext context, String githubIcon) {
+    return Tooltip(
+      message: 'View source on GitHub',
+      child: CfPanel(
+        borderRadius: 10,
+        padding: const EdgeInsets.all(11),
+        accent: context.cf.pink,
         onTap: () {
           umami.trackEvent(name: 'github_tapped');
           _launchGitHubUrl();
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: SvgPicture.asset(
-            githubIcon,
-            width: 24,
-            height: 24,
-          ),
+        child: SvgPicture.asset(
+          githubIcon,
+          width: 22,
+          height: 22,
         ),
       ),
     );

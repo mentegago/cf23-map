@@ -4,6 +4,7 @@ import 'package:cf_map_flutter/services/favorites_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/recommendation_service.dart';
+import '../design_system/cf_theme.dart';
 
 class FavoriteButton extends StatelessWidget {
   const FavoriteButton({
@@ -29,7 +30,7 @@ class FavoriteButton extends StatelessWidget {
     return IconButton(
       icon: Icon(
         isFavorite ? Icons.favorite : Icons.favorite_border,
-        color: isFavorite ? Colors.pink : theme.iconTheme.color,
+        color: isFavorite ? context.cf.pink : theme.iconTheme.color,
       ),
       tooltip: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
       onPressed: () async {

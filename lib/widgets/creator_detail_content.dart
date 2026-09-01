@@ -9,6 +9,7 @@ import '../models/creator.dart';
 import '../services/analytics_service.dart';
 import '../services/recommendation_service.dart';
 import '../utils/url_encoding.dart';
+import '../design_system/cf_design_system.dart';
 
 class CreatorDetailContent extends StatefulWidget {
   final Creator creator;
@@ -37,8 +38,6 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -67,13 +66,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
 
           // URLs
           if (widget.creator.links.isNotEmpty) ...[
-            const Text(
-              'Links',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const CfKicker('Creator links'),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -81,10 +74,11 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
               children: widget.creator.links.map((link) {
                 return Tooltip(
                   message: link.url,
-                  child: ActionChip(
-                    avatar: const Icon(Icons.link, size: 18),
-                    label: Text(link.title.isNotEmpty ? link.title : link.url),
-                    onPressed: () {
+                  child: CfTag(
+                    icon: Icons.link,
+                    label: link.title.isNotEmpty ? link.title : link.url,
+                    color: context.cf.cyan.withValues(alpha: 0.22),
+                    onTap: () {
                       umami.trackEvent(
                         name: 'creator_link_tapped',
                         data: {
@@ -102,8 +96,6 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                             mode: LaunchMode.externalApplication);
                       } catch (_) {}
                     },
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    side: BorderSide(color: theme.colorScheme.primary),
                   ),
                 );
               }).toList(),
@@ -113,22 +105,20 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
 
           // Fandom
           if (widget.creator.fandoms.isNotEmpty) ...[
-            Text(
+            CfKicker(
               'Fandom${widget.creator.fandoms.length > 1 ? 's' : ''}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              color: context.cf.pink,
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: widget.creator.fandoms.map((fandom) {
-                return ActionChip(
-                  avatar: const Icon(Icons.favorite, size: 18),
-                  label: Text(fandom.name),
-                  onPressed: () {
+                return CfTag(
+                  icon: Icons.favorite,
+                  label: fandom.name,
+                  color: context.cf.pink.withValues(alpha: 0.2),
+                  onTap: () {
                     umami.trackEvent(
                       name: 'fandom_tapped',
                       data: {
@@ -144,8 +134,6 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         .recordFandomInterest(fandom.id);
                     widget.onRequestSearch(fandom.name);
                   },
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  side: BorderSide(color: theme.colorScheme.primary),
                 );
               }).toList(),
             ),
@@ -154,23 +142,19 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
 
           // Works Type
           if (widget.creator.offerings.isNotEmpty) ...[
-            Text(
-              'Works Type${widget.creator.offerings.length > 1 ? 's' : ''}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            CfKicker(
+              'Works type${widget.creator.offerings.length > 1 ? 's' : ''}',
+              color: context.cf.violet,
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: widget.creator.offeringNames.map((worksType) {
-                return Chip(
-                  avatar: Icon(Icons.sell,
-                      size: 18, color: theme.colorScheme.primary),
-                  label: Text(worksType),
-                  backgroundColor: theme.colorScheme.surfaceContainerLow,
+                return CfTag(
+                  icon: Icons.sell,
+                  label: worksType,
+                  color: context.cf.violet.withValues(alpha: 0.18),
                 );
               }).toList(),
             ),
@@ -178,23 +162,19 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
           ],
 
           // Booths
-          Text(
-            'Booth Location${widget.creator.booths.length > 1 ? 's' : ''}',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          CfKicker(
+            'Booth location${widget.creator.booths.length > 1 ? 's' : ''}',
+            color: context.cf.yellow,
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: widget.creator.booths.map((booth) {
-              return Chip(
-                avatar: Icon(Icons.location_on,
-                    size: 18, color: theme.colorScheme.primary),
-                label: Text(booth),
-                backgroundColor: theme.colorScheme.surfaceContainerLow,
+              return CfTag(
+                icon: Icons.location_on,
+                label: booth,
+                color: context.cf.yellow,
               );
             }).toList(),
           ),
@@ -253,70 +233,13 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
               Positioned(
                 top: 0,
                 right: 0,
-                child: Row(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerLow
-                            .withValues(alpha: 0.8),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(32)),
-                        border: Border.all(
-                            color: theme.colorScheme.outline
-                                .withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          if (widget.showFavoriteButton)
-                            FavoriteButton(
-                                key: Key(widget.creator.name),
-                                creator: widget.creator),
-                          if (widget.showShareButton)
-                            IconButton(
-                              icon: const Icon(Icons.share),
-                              tooltip: 'Share',
-                              onPressed: () {
-                                umami.trackEvent(
-                                  name: 'creator_share_tapped',
-                                  data: {
-                                    'creator_id': widget.creator.id.toString(),
-                                    'creator_name': widget.creator.name,
-                                  },
-                                );
-                                _shareCreator(context);
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                    if (widget.showCloseButton && widget.onClose != null)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerLow,
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(32)),
-                          border: Border.all(
-                              color: theme.colorScheme.outline
-                                  .withValues(alpha: 0.3)),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.close),
-                          tooltip: 'Close',
-                          onPressed: () {
-                            umami.trackEvent(
-                              name: 'mobile_creator_detail_dismiss_tapped',
-                              data: {
-                                'creator_id': widget.creator.id.toString(),
-                                'creator_name': widget.creator.name,
-                              },
-                            );
-                            widget.onClose?.call();
-                          },
-                        ),
-                      ),
-                  ],
+                child: CreatorDetailActions(
+                  creator: widget.creator,
+                  showFavoriteButton: widget.showFavoriteButton,
+                  showShareButton: widget.showShareButton,
+                  showCloseButton: widget.showCloseButton,
+                  onClose: widget.onClose,
+                  onShare: () => shareCreator(context, widget.creator),
                 ),
               )
             ],
@@ -330,12 +253,11 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
+                const CfKicker('Circle profile'),
+                const SizedBox(height: 6),
                 Text(
                   widget.creator.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -343,14 +265,11 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                   runSpacing: 8,
                   children: [
                     if (widget.creator.id != -1)
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.open_in_new),
-                        label: const Text('Circle Page'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          foregroundColor: theme.colorScheme.onPrimaryContainer,
-                          elevation: 0,
-                        ),
+                      CfActionButton(
+                        icon: Icons.open_in_new,
+                        label: 'Circle Page',
+                        compact: true,
+                        color: context.cf.yellow,
                         onPressed: () {
                           umami.trackEvent(
                             name: 'creator_circle_page_link_tapped',
@@ -369,17 +288,14 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         },
                       ),
                     if (widget.creator.assets.gallery.isNotEmpty)
-                      ElevatedButton.icon(
+                      CfActionButton(
                         icon: widget.creator.assets.gallery.length > 1
-                            ? const Icon(Icons.photo_library)
-                            : const Icon(Icons.photo),
-                        label: Text(
-                            'Samplework${widget.creator.assets.gallery.length > 1 ? 's' : ''}'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          foregroundColor: theme.colorScheme.onPrimaryContainer,
-                          elevation: 0,
-                        ),
+                            ? Icons.photo_library
+                            : Icons.photo,
+                        label:
+                            'Samplework${widget.creator.assets.gallery.length > 1 ? 's' : ''}',
+                        compact: true,
+                        color: context.cf.cyan,
                         onPressed: () {
                           umami.trackEvent(
                             name: 'creator_sampleworks_tapped',
@@ -419,60 +335,144 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
         return Colors.grey;
     }
   }
+}
 
-  void _shareCreator(BuildContext context) async {
-    if (widget.creator.id == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Share feature is currently unavailable. We\'ll add this back as soon as we can!',
-              style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
+class CreatorDetailActions extends StatelessWidget {
+  const CreatorDetailActions({
+    super.key,
+    required this.creator,
+    required this.showFavoriteButton,
+    required this.showShareButton,
+    required this.showCloseButton,
+    required this.onShare,
+    this.onClose,
+  });
 
-    try {
-      final shareUrl = UrlEncoding.toUrl({'creator_id': widget.creator.id});
+  final Creator creator;
+  final bool showFavoriteButton;
+  final bool showShareButton;
+  final bool showCloseButton;
+  final VoidCallback onShare;
+  final VoidCallback? onClose;
 
-      await Clipboard.setData(ClipboardData(text: shareUrl));
-      if (context.mounted) {
-        context
-            .read<RecommendationService>()
-            .recordCreatorShared(widget.creator);
-      }
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Link copied: ${widget.creator.name}',
-                  style: const TextStyle(color: Colors.white),
-                ),
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        if (showFavoriteButton || showShareButton)
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color:
+                  theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.88),
+              borderRadius: const BorderRadius.all(Radius.circular(32)),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
               ),
-            ],
+            ),
+            child: Row(
+              children: [
+                if (showFavoriteButton)
+                  FavoriteButton(key: Key(creator.name), creator: creator),
+                if (showShareButton)
+                  IconButton(
+                    icon: const Icon(Icons.share),
+                    tooltip: 'Share',
+                    onPressed: () {
+                      umami.trackEvent(
+                        name: 'creator_share_tapped',
+                        data: {
+                          'creator_id': creator.id.toString(),
+                          'creator_name': creator.name,
+                        },
+                      );
+                      onShare();
+                    },
+                  ),
+              ],
+            ),
           ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not copy link.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
+        if (showCloseButton && onClose != null)
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              borderRadius: const BorderRadius.all(Radius.circular(32)),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+              ),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              onPressed: () {
+                umami.trackEvent(
+                  name: 'mobile_creator_detail_dismiss_tapped',
+                  data: {
+                    'creator_id': creator.id.toString(),
+                    'creator_name': creator.name,
+                  },
+                );
+                onClose?.call();
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+Future<void> shareCreator(BuildContext context, Creator creator) async {
+  if (creator.id == -1) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Share feature is currently unavailable. We\'ll add this back as soon as we can!',
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+    return;
+  }
+
+  try {
+    final shareUrl = UrlEncoding.toUrl({'creator_id': creator.id});
+
+    await Clipboard.setData(ClipboardData(text: shareUrl));
+    if (context.mounted) {
+      context.read<RecommendationService>().recordCreatorShared(creator);
     }
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Link copied: ${creator.name}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not copy link.'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 }
 

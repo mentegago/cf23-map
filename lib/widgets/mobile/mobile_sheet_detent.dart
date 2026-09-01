@@ -21,14 +21,16 @@ enum MobileSearchSheetDetent { collapsed, expanded }
 
 abstract final class MobileSearchSheetLayout {
   static const double headerHeight = 132;
-  static const double minimumBottomSafeArea = 24;
+  static const double iosGestureNavigationFallback = 24;
   static const double minimumCollapsedExtent = 0.16;
   static const double maximumCollapsedExtent = 0.24;
 
-  static double effectiveBottomSafeArea(double reportedBottomSafeArea) {
-    return reportedBottomSafeArea < minimumBottomSafeArea
-        ? minimumBottomSafeArea
-        : reportedBottomSafeArea;
+  static double effectiveBottomSafeArea(
+    double reportedBottomSafeArea, {
+    bool useGestureNavigationFallback = false,
+  }) {
+    if (reportedBottomSafeArea > 0) return reportedBottomSafeArea;
+    return useGestureNavigationFallback ? iosGestureNavigationFallback : 0;
   }
 
   static double collapsedExtent({
@@ -39,6 +41,14 @@ abstract final class MobileSearchSheetLayout {
     return ((headerHeight + effectiveSafeArea) / availableHeight)
         .clamp(minimumCollapsedExtent, maximumCollapsedExtent)
         .toDouble();
+  }
+
+  static double collapsedHeaderBottomInset({
+    required double bottomSafeArea,
+    required double expansionProgress,
+  }) {
+    final progress = expansionProgress.clamp(0.0, 1.0);
+    return bottomSafeArea * (1 - progress);
   }
 }
 
