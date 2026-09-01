@@ -12,7 +12,7 @@ Creator testCreator(int id) => Creator(
       id: id,
       name: 'Creator $id',
       spaces: [CreatorSpace(code: 'A-$id')],
-      attendanceDayIds: const ['day-1', 'day-2'],
+      attendanceDates: const ['2026-10-31', '2026-11-01'],
       fandoms: [
         Fandom(
           id: 1,
@@ -115,7 +115,7 @@ void main() {
         id: 2,
         name: 'Creator 2',
         spaces: const [CreatorSpace(code: 'A-2')],
-        attendanceDayIds: const ['day-1', 'day-2'],
+        attendanceDates: const ['2026-10-31', '2026-11-01'],
         fandoms: [
           Fandom(
             id: 2,
