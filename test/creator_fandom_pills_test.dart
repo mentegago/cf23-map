@@ -39,7 +39,7 @@ void main() {
         CreatorSpace(code: 'L-49a'),
         CreatorSpace(code: 'L-49b'),
       ],
-      attendanceDayIds: const ['day-1', 'day-2'],
+      attendanceDates: const ['2026-10-31', '2026-11-01'],
       fandoms: [
         Fandom(
             id: 1, name: 'Dance with Death', kind: 'franchise', parentId: null),

@@ -65,7 +65,7 @@ void main() {
           id: id,
           name: name,
           spaces: [CreatorSpace(code: 'A-$id')],
-          attendanceDayIds: const ['day-1', 'day-2'],
+          attendanceDates: const ['2026-10-31', '2026-11-01'],
           fandoms: [fandom],
         );
     final creators = [
@@ -103,7 +103,7 @@ void main() {
           id: id,
           name: 'Artist $id',
           spaces: [CreatorSpace(code: 'A-$id')],
-          attendanceDayIds: const ['day-1'],
+          attendanceDates: const ['2026-10-31'],
           fandoms: [fandom],
         );
     final index = CreatorCatalogIndex.build(
@@ -180,7 +180,7 @@ void main() {
           id: id,
           name: name,
           spaces: [CreatorSpace(code: 'A-$id')],
-          attendanceDayIds: const ['day-1'],
+          attendanceDates: const ['2026-10-31'],
           fandoms: [fandom],
         );
     final index = CreatorCatalogIndex.build(
@@ -221,5 +221,46 @@ void main() {
     expect(index.fandomIdForName('Oc charater'), 1);
     expect(index.fandomIdForName('OC'), 1);
     expect(index.fandomIdForName('Marvel'), 41);
+  });
+
+  test('attendanceDates resolve to Sat and Sun labels', () {
+    const dayLabels = {
+      '2026-10-31': 'Saturday',
+      '2026-11-01': 'Sunday',
+    };
+    final bothDays = Creator.fromCatalogJson(
+      {
+        'id': '1',
+        'name': 'Both Days',
+        'attendanceDates': ['2026-10-31', '2026-11-01'],
+      },
+      fandomById: const {},
+      dayLabels: dayLabels,
+    );
+    final saturdayOnly = Creator.fromCatalogJson(
+      {
+        'id': '2',
+        'name': 'Saturday Only',
+        'attendanceDates': ['2026-10-31'],
+      },
+      fandomById: const {},
+      dayLabels: dayLabels,
+    );
+    final sundayOnly = Creator.fromCatalogJson(
+      {
+        'id': '3',
+        'name': 'Sunday Only',
+        'attendanceDates': ['2026-11-01'],
+      },
+      fandomById: const {},
+      dayLabels: dayLabels,
+    );
+
+    expect(bothDays.day, 'BOTH');
+    expect(bothDays.dayDisplay, 'Sat & Sun');
+    expect(saturdayOnly.day, 'SAT');
+    expect(saturdayOnly.dayDisplay, 'Sat');
+    expect(sundayOnly.day, 'SUN');
+    expect(sundayOnly.dayDisplay, 'Sun');
   });
 }

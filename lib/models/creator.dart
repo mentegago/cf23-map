@@ -42,7 +42,7 @@ class Creator {
   final int id;
   final String name;
   final List<CreatorSpace> spaces;
-  final List<String> attendanceDayIds;
+  final List<String> attendanceDates;
   final Map<String, String> dayLabels;
   final String? contentRating;
   final List<String> offerings;
@@ -56,7 +56,7 @@ class Creator {
     required this.id,
     required this.name,
     required this.spaces,
-    required this.attendanceDayIds,
+    required this.attendanceDates,
     this.dayLabels = const {},
     this.contentRating,
     this.offerings = const [],
@@ -89,7 +89,7 @@ class Creator {
               ))
           .where((space) => space.code.isNotEmpty)
           .toList(growable: false),
-      attendanceDayIds: ((json['attendanceDayIds'] as List?) ?? const [])
+      attendanceDates: ((json['attendanceDates'] as List?) ?? const [])
           .map((value) => value.toString())
           .toList(growable: false),
       dayLabels: dayLabels,
@@ -126,25 +126,38 @@ class Creator {
     spaces.map((space) => space.code),
   );
 
+  String _shortDayLabel(String key) {
+    final label = (dayLabels[key] ?? key).toLowerCase();
+    if (label.contains('saturday') || label.contains('sabtu')) {
+      return 'Sat';
+    }
+    if (label.contains('sunday') || label.contains('minggu')) {
+      return 'Sun';
+    }
+    final date = DateTime.tryParse(key);
+    if (date != null) {
+      switch (date.weekday) {
+        case DateTime.saturday:
+          return 'Sat';
+        case DateTime.sunday:
+          return 'Sun';
+      }
+    }
+    return dayLabels[key] ?? key;
+  }
+
   String get day {
-    if (attendanceDayIds.length > 1) return 'BOTH';
-    if (attendanceDayIds.isEmpty) return '';
-    final id = attendanceDayIds.single;
-    final label = (dayLabels[id] ?? id).toLowerCase();
-    if (id == 'day-1' ||
-        label.contains('saturday') ||
-        label.contains('sabtu')) {
-      return 'SAT';
-    }
-    if (id == 'day-2' || label.contains('sunday') || label.contains('minggu')) {
-      return 'SUN';
-    }
-    return dayLabels[id] ?? id;
+    if (attendanceDates.length > 1) return 'BOTH';
+    if (attendanceDates.isEmpty) return '';
+    final short = _shortDayLabel(attendanceDates.single);
+    if (short == 'Sat') return 'SAT';
+    if (short == 'Sun') return 'SUN';
+    return short;
   }
 
   String get dayDisplay {
-    if (attendanceDayIds.isEmpty) return '';
-    return attendanceDayIds.map((id) => dayLabels[id] ?? id).join(' & ');
+    if (attendanceDates.isEmpty) return '';
+    return attendanceDates.map(_shortDayLabel).join(' & ');
   }
 
   String get boothsDisplay => booths.join(', ');

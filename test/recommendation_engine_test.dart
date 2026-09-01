@@ -17,7 +17,7 @@ Creator creator(int id, String booth, List<String> fandomNames) => Creator(
       id: id,
       name: 'Creator $id',
       spaces: [CreatorSpace(code: booth)],
-      attendanceDayIds: const ['day-1', 'day-2'],
+      attendanceDates: const ['2026-10-31', '2026-11-01'],
       fandoms: fandomNames
           .map((name) => Fandom(
                 id: fandomIds[name]!,
