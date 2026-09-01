@@ -9,6 +9,7 @@ import '../widgets/mobile/creator_detail_sheet.dart';
 import '../widgets/mobile/expandable_search.dart';
 import '../widgets/mobile/mobile_sheet_detent.dart';
 import '../widgets/version_notification.dart';
+import '../design_system/cf_design_system.dart';
 
 class MapScreenMobileView extends StatefulWidget {
   final List<MergedCell> mergedCells;
@@ -102,34 +103,29 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView>
             bottom: 16,
             left: 16,
             right: 16,
-            child: Material(
-              color: Theme.of(context).colorScheme.surfaceContainerLowest,
-              elevation: 6,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "You're viewing a curated creator list",
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Only the creators selected by the list owner are shown on the map. Tap the search box above to see the creator list.",
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
+            child: CfPanel(
+              accent: context.cf.pink,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CfKicker('Curated route'),
+                  const SizedBox(height: 8),
+                  Text(
+                    "You're viewing a curated creator list",
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Only the creators selected by the list owner are shown on the map. Tap the search box above to see the creator list.",
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
               ),
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/creator.dart';
 import '../creator_avatar.dart';
+import '../../design_system/cf_design_system.dart';
 
 class CreatorSelectorSheet extends StatelessWidget {
   final String boothId;
@@ -17,74 +18,64 @@ class CreatorSelectorSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: context.cf.ink, width: 1.5)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Handle bar
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          
+          const CfSheetGrip(),
+
           // Title
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                const Text(
-                  'Select Creator',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                const CfKicker('Booth directory'),
+                const SizedBox(height: 6),
+                Text('Select Creator', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),
                 Text(
                   'Booth $boothId',
                   style: TextStyle(
                     fontSize: 14,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
-          
+
           const Divider(height: 1),
-          
+
           // Creator list (Saturday first, then Sunday, then Both/others)
           ListView.builder(
             shrinkWrap: true,
             itemCount: creators.length,
             itemBuilder: (context, index) {
               final sorted = [...creators]..sort((a, b) {
-                int rank(String day) {
-                  switch (day.toUpperCase()) {
-                    case 'SAT':
-                      return 0;
-                    case 'SUN':
-                      return 1;
-                    case 'BOTH':
-                      return 2;
-                    default:
-                      return 3;
+                  int rank(String day) {
+                    switch (day.toUpperCase()) {
+                      case 'SAT':
+                        return 0;
+                      case 'SUN':
+                        return 1;
+                      case 'BOTH':
+                        return 2;
+                      default:
+                        return 3;
+                    }
                   }
-                }
-                final r = rank(a.day).compareTo(rank(b.day));
-                if (r != 0) return r;
-                return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-              });
+
+                  final r = rank(a.day).compareTo(rank(b.day));
+                  if (r != 0) return r;
+                  return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+                });
               final creator = sorted[index];
               return ListTile(
                 leading: CreatorAvatar(creator: creator),
@@ -104,11 +95,10 @@ class CreatorSelectorSheet extends StatelessWidget {
               );
             },
           ),
-          
+
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 }
-

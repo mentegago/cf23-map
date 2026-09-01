@@ -6,13 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows every fandom in a horizontal list', (tester) async {
+  testWidgets('shows every fandom as compact wrapping metadata',
+      (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: SizedBox(
             width: 240,
-            child: CreatorFandomPills(
+            child: CreatorFandomSummary(
               fandoms: ['Blue Archive', 'Hololive', 'Touhou'],
             ),
           ),
@@ -23,15 +24,14 @@ void main() {
     expect(find.text('Blue Archive'), findsOneWidget);
     expect(find.text('Hololive'), findsOneWidget);
 
-    await tester.drag(find.byType(ListView), const Offset(-240, 0));
-    await tester.pumpAndSettle();
-
     expect(find.text('Touhou'), findsOneWidget);
+    expect(find.byType(Wrap), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('recommended fandoms use a full-width row below creator details',
       (tester) async {
+    var selectedCount = 0;
     final creator = Creator(
       id: 1,
       name: 'Artist Strong',
@@ -59,16 +59,43 @@ void main() {
             width: 390,
             child: CreatorTile(
               creator: creator,
-              onCreatorSelected: (_) {},
-              recommendationFandoms: creator.fandomNames,
+              onCreatorSelected: (_) => selectedCount++,
+              fandoms: creator.fandomNames,
             ),
           ),
         ),
       ),
     );
 
-    final pills = tester.getSize(find.byType(CreatorFandomPills));
-    expect(pills.width, 374);
+    final summary = tester.getSize(find.byType(CreatorFandomSummary));
+    expect(summary.width, 302);
+    final tileHeight = tester.getSize(find.byType(ListTile)).height;
+    expect(tileHeight, greaterThanOrEqualTo(48));
+    final boothBottom =
+        tester.getBottomLeft(find.textContaining('L-49a, L-49b')).dy;
+    final fandomTop = tester.getTopLeft(find.text('Dance with Death')).dy;
+    expect(fandomTop - boothBottom, lessThanOrEqualTo(10));
+    await tester.tap(find.text('Dance with Death'));
+    await tester.pump();
+    expect(selectedCount, 1);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('limits metadata and summarizes hidden fandoms', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CreatorFandomSummary(
+            fandoms: ['One', 'Two', 'Three', 'Four', 'Five', 'Six'],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('One'), findsOneWidget);
+    expect(find.text('Four'), findsOneWidget);
+    expect(find.text('Five'), findsNothing);
+    expect(find.text('Six'), findsNothing);
+    expect(find.text('+2 more'), findsOneWidget);
   });
 }

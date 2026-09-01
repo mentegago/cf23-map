@@ -111,6 +111,54 @@ class CreatorCatalogIndex {
     );
   }
 
+  List<String> matchingFandomNames(String query, {int limit = 20}) {
+    if (query.trim().isEmpty) return const [];
+    final matched = fandomSuggestions(query, limit: limit);
+    if (matched.isEmpty) return const [];
+
+    final expanded = <String>[];
+    final seen = <String>{};
+    for (final name in matched) {
+      final rootId = fandomIdForName(name);
+      if (rootId == null) continue;
+      final descendants = fandoms
+          .where((fandom) => _isDescendantOf(fandom.id, rootId))
+          .toList()
+        ..sort((a, b) {
+          final depth =
+              _fandomDepth(a.id, rootId).compareTo(_fandomDepth(b.id, rootId));
+          if (depth != 0) return depth;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+      for (final fandom in descendants) {
+        if (seen.add(fandom.searchName)) expanded.add(fandom.name);
+      }
+    }
+    return expanded;
+  }
+
+  bool _isDescendantOf(int fandomId, int rootId) {
+    var currentId = fandomId;
+    while (true) {
+      if (currentId == rootId) return true;
+      final parentId = fandomById[currentId]?.parentId;
+      if (parentId == null) return false;
+      currentId = parentId;
+    }
+  }
+
+  int _fandomDepth(int fandomId, int rootId) {
+    var currentId = fandomId;
+    var depth = 0;
+    while (currentId != rootId) {
+      final parentId = fandomById[currentId]?.parentId;
+      if (parentId == null) return 999;
+      currentId = parentId;
+      depth++;
+    }
+    return depth;
+  }
+
   List<String> _fandomSuggestionsUncached(String query, {required int limit}) {
     if (query.trim().isEmpty) return popularFandomNames(limit: limit);
 

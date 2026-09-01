@@ -574,12 +574,12 @@ class MapPainter extends CustomPainter {
     if (cell.isEmpty) {
       return Colors.transparent;
     } else if (cell.isWall) {
-      return isDark ? const Color(0xFF1A1A1A) : const Color(0xFF424242);
+      return isDark ? const Color(0xFF09070D) : const Color(0xFF191522);
     } else if (cell.isHall) {
       return _getHallColor(cell.content);
     } else if (cell.isBooth) {
       if (boothToCreators?[cell.content]?.isEmpty ?? true) {
-        return isDark ? const Color(0xFF2C2C2C) : const Color(0xFFEEEEEE);
+        return isDark ? const Color(0xFF292331) : const Color(0xFFF0E8DE);
       }
 
       if (isCreatorCustomListMode) {
@@ -590,11 +590,11 @@ class MapPainter extends CustomPainter {
       return _boothFillColor(section);
     } else if (cell.isLocationMarker) {
       if (cell.content == 'a' || cell.content == 'b') {
-        return isDark ? const Color(0xFF2C2C2C) : const Color(0xFFEEEEEE);
+        return isDark ? const Color(0xFF292331) : const Color(0xFFF0E8DE);
       }
-      return isDark ? const Color(0xFF4A2C00) : const Color(0xFFFFE0B2);
+      return isDark ? const Color(0xFF5B4812) : const Color(0xFFFFD84D);
     }
-    return isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE0E0E0);
+    return isDark ? const Color(0xFF292331) : const Color(0xFFE8DDD2);
   }
 
   Color _getBorderColor(MergedCell cell) {
@@ -641,7 +641,7 @@ class MapPainter extends CustomPainter {
           fontFamily: 'Roboto',
         );
       }
-      Color textColor = isDark ? Colors.white : const Color(0xFF0D47A1);
+      Color textColor = isDark ? const Color(0xFFFFF6E8) : const Color(0xFF191522);
 
       if (isCreatorCustomListMode) {
         textColor = Colors.white;
@@ -687,24 +687,24 @@ class MapPainter extends CustomPainter {
   // Soft, readable fills per section group (adapts to theme)
   Color _boothFillColor(String section) {
     List<Color> lightPalette = const [
-      Color(0xFFE3F2FD), // blue 50
-      Color(0xFFE8F5E9), // green 50
-      Color(0xFFFFF3E0), // orange 50
-      Color(0xFFF3E5F5), // purple 50
-      Color(0xFFFFEBEE), // red 50
-      Color(0xFFE0F7FA), // cyan 50
-      Color(0xFFF1F8E9), // light green 50
-      Color(0xFFFFF8E1), // amber 50
+      Color(0xFFFFD9E8),
+      Color(0xFFC9F7FC),
+      Color(0xFFFFE99A),
+      Color(0xFFE6E0FF),
+      Color(0xFFFFD9C8),
+      Color(0xFFD5F4DF),
+      Color(0xFFFFE0F1),
+      Color(0xFFD8E8FF),
     ];
     List<Color> darkPalette = const [
-      Color(0xFF1A237E), // blue 900
-      Color(0xFF1B5E20), // green 900
-      Color(0xFFE65100), // orange 900
-      Color(0xFF4A148C), // purple 900
-      Color(0xFFB71C1C), // red 900
-      Color(0xFF006064), // cyan 900
-      Color(0xFF33691E), // light green 900
-      Color(0xFFFF6F00), // amber 900
+      Color(0xFF652443),
+      Color(0xFF12505A),
+      Color(0xFF65531C),
+      Color(0xFF43366F),
+      Color(0xFF693523),
+      Color(0xFF24553A),
+      Color(0xFF5E294E),
+      Color(0xFF29456B),
     ];
     final palette = isDark ? darkPalette : lightPalette;
 
@@ -712,10 +712,10 @@ class MapPainter extends CustomPainter {
     // Sections 'O' and 'G' previously mapped to amber/orange which had poor contrast.
     if (isDark) {
       if (section == 'O') {
-        return const Color(0xFF5E35B1); // deepPurple 600
+        return const Color(0xFF553F8E);
       }
       if (section == 'G') {
-        return const Color(0xFF00897B); // teal 600
+        return const Color(0xFF17616A);
       }
     }
 
@@ -731,14 +731,14 @@ class MapPainter extends CustomPainter {
     }
 
     List<Color> palette = const [
-      Color(0xFF1976D2), // blue 700
-      Color(0xFF388E3C), // green 600
-      Color(0xFFEF6C00), // orange 800
-      Color(0xFF7B1FA2), // purple 700
-      Color(0xFFD32F2F), // red 700
-      Color(0xFF00838F), // cyan 800
-      Color(0xFF558B2F), // light green 700
-      Color(0xFFFF8F00), // amber 800
+      Color(0xFFFF3D8D),
+      Color(0xFF009FB2),
+      Color(0xFFC39200),
+      Color(0xFF7657FF),
+      Color(0xFFE25B31),
+      Color(0xFF218C52),
+      Color(0xFFD63A91),
+      Color(0xFF3775CC),
     ];
     final idx = section.codeUnitAt(0) % palette.length;
     return palette[idx];
@@ -851,8 +851,8 @@ class HoverOverlayPainter extends CustomPainter {
     final fillPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = isDark 
-          ? const Color(0x40BBDEFB) // Semi-transparent light blue for dark mode
-          : const Color(0x80E3F2FD); // Semi-transparent light blue for light mode
+          ? const Color(0x5926DDF0)
+          : const Color(0x6600C8E0);
     
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(2)),
@@ -863,8 +863,8 @@ class HoverOverlayPainter extends CustomPainter {
     final borderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..color = isDark 
-          ? const Color(0xFF64B5F6) // Lighter blue for dark mode
-          : const Color(0xFF2196F3)
+          ? const Color(0xFF26DDF0)
+          : const Color(0xFF008DA0)
       ..strokeWidth = 2.0;
     
     canvas.drawRRect(
@@ -917,10 +917,9 @@ class SelectionOverlayPainter extends CustomPainter {
       // Draw selection fill overlay
       final fillPaint = Paint()
         ..style = PaintingStyle.fill
-        // White-ish overlay in dark mode, dark blue in light mode
         ..color = isDark 
-            ? const Color.fromARGB(255, 255, 250, 180) // Semi-transparent white
-            : const Color.fromARGB(255, 255, 128, 9); // Semi-transparent deep blue
+            ? const Color(0xFFFFDC60)
+            : const Color(0xFFFF3D8D);
       
       if (useRoundedCorners && !cell.isHall) {
         canvas.drawRRect(
@@ -934,8 +933,7 @@ class SelectionOverlayPainter extends CustomPainter {
       // Draw selection border
       final borderPaint = Paint()
         ..style = PaintingStyle.stroke
-        // Bright yellow in dark mode, deep blue in light mode
-        ..color = isDark ? const Color.fromARGB(255, 253, 173, 53) : const Color.fromARGB(255, 206, 102, 41)
+        ..color = isDark ? const Color(0xFFFF5CA2) : const Color(0xFF191522)
         ..strokeWidth = 3.0 * zoomScale;
       
       if (useRoundedCorners && !cell.isHall) {

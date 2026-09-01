@@ -82,6 +82,10 @@ void main() {
     expect(index.fandomIdForName('blue-archive'), 34);
     expect(index.search('BA').map((creator) => creator.id), [1, 2]);
     expect(index.fandomSuggestions('blue').first, 'Blue Archive');
+    expect(index.matchingFandomNames('HoYoverse'), [
+      'HoYoverse',
+      'Genshin Impact',
+    ]);
     expect(index.creatorsByFandomId[34], hasLength(2));
     expect(index.search('HoYoverse').map((creator) => creator.id), [4]);
   });
@@ -167,7 +171,11 @@ void main() {
       name: 'Attack on Titan',
       kind: 'franchise',
       parentId: null,
-      alternateNames: const ['AOT', 'Shingeki No Kyojin', 'Shingeki No Kyoujin'],
+      alternateNames: const [
+        'AOT',
+        'Shingeki No Kyojin',
+        'Shingeki No Kyoujin'
+      ],
     );
     final magicalDoremi = Fandom(
       id: 270,
@@ -210,6 +218,8 @@ void main() {
     expect(index.fandomSuggestions('Oc charater').first, 'Original');
     expect(index.fandomSuggestions('OC').first, 'Original');
     expect(index.fandomSuggestions('shingeki').first, 'Attack on Titan');
+    expect(index.matchingFandomNames('shingeki').first, 'Attack on Titan');
+    expect(index.matchingFandomNames('AOT').first, 'Attack on Titan');
     expect(index.fandomSuggestions('ojama').first, 'Magical DoReMi');
     expect(index.fandomSuggestions('Dan').first, 'Dandadan');
     expect(index.search('Dan').first.id, 8);
