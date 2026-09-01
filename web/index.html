@@ -18,12 +18,15 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="color-scheme" content="light dark">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Interactive booth map viewer for Comifuro 23 (CF23) event. Search for creators and navigate their booth locations.">
+  <meta name="theme-color" content="#fffdf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#21192a" media="(prefers-color-scheme: dark)">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CF23 Map">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -37,6 +40,14 @@
     html, body {
       overscroll-behavior-x: none;
       touch-action: pan-y;
+      background-color: #fffdf8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html, body {
+        color-scheme: dark;
+        background-color: #21192a;
+      }
     }
   </style>
 </head>
@@ -53,6 +64,6 @@
       }
     });
   </script>
-  <script src="flutter_bootstrap.js?v=16" async></script>
+  <script src="flutter_bootstrap.js?v=17" async></script>
 </body>
 </html>

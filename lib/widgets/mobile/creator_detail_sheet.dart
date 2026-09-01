@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../models/creator.dart';
 import '../creator_detail_content.dart';
 import 'mobile_sheet_detent.dart';
+import '../../design_system/cf_design_system.dart';
 
 class CreatorDetailSheet extends StatelessWidget {
   final Creator creator;
@@ -35,7 +38,10 @@ class CreatorDetailSheet extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(color: context.cf.ink, width: 1.5),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.2),
@@ -44,30 +50,41 @@ class CreatorDetailSheet extends StatelessWidget {
               ),
             ],
           ),
-          child: ListView(
-            controller: scrollController,
+          child: Stack(
             children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+              ListView(
+                controller: scrollController,
+                children: [
+                  const Center(child: CfSheetGrip()),
+                  CreatorDetailContent(
+                    creator: creator,
+                    showFavoriteButton: false,
+                    showShareButton: false,
+                    showCloseButton: false,
+                    onRequestSearch: onRequestSearch,
                   ),
-                ),
+                ],
               ),
-
-              // Content
-              CreatorDetailContent(
-                creator: creator,
-                showFavoriteButton: true,
-                showShareButton: true,
-                showCloseButton: true,
-                onClose: onClose,
-                onRequestSearch: onRequestSearch,
+              AnimatedBuilder(
+                animation: scrollController,
+                builder: (context, child) {
+                  final offset = scrollController.hasClients
+                      ? scrollController.offset
+                      : 0.0;
+                  return Positioned(
+                    top: math.max(8, 39 - offset),
+                    right: 16,
+                    child: child!,
+                  );
+                },
+                child: CreatorDetailActions(
+                  creator: creator,
+                  showFavoriteButton: true,
+                  showShareButton: true,
+                  showCloseButton: true,
+                  onClose: onClose,
+                  onShare: () => shareCreator(context, creator),
+                ),
               ),
             ],
           ),

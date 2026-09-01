@@ -37,11 +37,32 @@ void main() {
         availableHeight: 844,
         bottomSafeArea: 0,
       ),
-      closeTo(0.185, 0.001),
+      closeTo(0.16, 0.001),
     );
     expect(
       MobileSearchSheetLayout.effectiveBottomSafeArea(0),
-      MobileSearchSheetLayout.minimumBottomSafeArea,
+      0,
+    );
+    expect(
+      MobileSearchSheetLayout.effectiveBottomSafeArea(
+        0,
+        useGestureNavigationFallback: true,
+      ),
+      MobileSearchSheetLayout.iosGestureNavigationFallback,
+    );
+    expect(
+      MobileSearchSheetLayout.collapsedHeaderBottomInset(
+        bottomSafeArea: 24,
+        expansionProgress: 0,
+      ),
+      24,
+    );
+    expect(
+      MobileSearchSheetLayout.collapsedHeaderBottomInset(
+        bottomSafeArea: 24,
+        expansionProgress: 1,
+      ),
+      0,
     );
   });
 }
