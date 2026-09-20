@@ -51,10 +51,11 @@ python tools/generate_booth_proximity.py --check
 `data/map.json` mendukung format semantic map schema v2 dari Event Canvas:
 setiap booth, highlight, area, dan teks memiliki koordinat serta ukurannya
 sendiri. Annotation dapat memakai semantic `type`, misalnya `section-marker`
-atau `booth-suffix-marker`, untuk styling yang konsisten. Format grid/CSV lama
-tetap dapat dibaca untuk kompatibilitas. Untuk
-semantic map, jarak rekomendasi diperkirakan dari posisi booth; data grid lama
-tetap memakai jarak lorong berbasis BFS.
+atau `booth-suffix-marker`, untuk styling yang konsisten. Format ini juga
+mendukung teks yang mengikuti tema, dinding dengan ketebalan variabel, panah
+penunjuk arah, dan ukuran font opsional. Format grid/CSV lama tetap dapat dibaca
+untuk kompatibilitas. Untuk semantic map, jarak rekomendasi diperkirakan dari
+posisi booth; data grid lama tetap memakai jarak lorong berbasis BFS.
 
 Benchmark untuk inti kalkulasi rekomendasi (tanpa waktu render UI) dapat
 dijalankan dengan:

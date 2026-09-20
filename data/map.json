@@ -8,7 +8,7 @@
   },
   "underlay": {
     "name": "CF23_FLOORMAP_market_only.jpg",
-    "opacity": 0
+    "opacity": 0.89
   },
   "editor": {
     "magnet": {
@@ -16,9 +16,884 @@
       "gap": 0,
       "distance": 12
     },
-    "labelOpacity": 1
+    "labelOpacity": 0.9
   },
   "features": [
+    {
+      "uid": "feature-mua8ew1i-10",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4587.4,
+        "y": 1156.9,
+        "width": 2.2,
+        "height": 517.2
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8f26e-11",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4587.4,
+        "y": 259.1,
+        "width": 2.2000000000007276,
+        "height": 664.9
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8a5cn-u",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 5.5,
+        "y": 1675.2,
+        "width": 658.1,
+        "height": 1.3999999999998636
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8cffi-v",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 859,
+        "y": 1675.2,
+        "width": 654.5999999999999,
+        "height": 1.3999999999998636
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8cvgz-w",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1709.5,
+        "y": 1675.2,
+        "width": 655.6999999999998,
+        "height": 4.399999999999864
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8d5d7-x",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2564.1,
+        "y": 1675.2,
+        "width": 650.0999999999999,
+        "height": 4.399999999999864
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8df1m-y",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3408.1,
+        "y": 1675.2,
+        "width": 662.3000000000002,
+        "height": 4.399999999999864
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8dxeq-z",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4260.9,
+        "y": 1675.2,
+        "width": 326.5,
+        "height": 4.399999999999864
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua846n8-2",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4572.6,
+        "y": 255.9,
+        "width": 14.799999999999272,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua84hma-3",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4303,
+        "y": 255.9,
+        "width": 233.5,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua84t1q-4",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4184.7,
+        "y": 255.9,
+        "width": 81.90000000000055,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua84ylw-5",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4057.5,
+        "y": 255.9,
+        "width": 81.90000000000055,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua852ab-6",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3786.6,
+        "y": 255.9,
+        "width": 233.70000000000027,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua85ail-7",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3451,
+        "y": 255.9,
+        "width": 239.0999999999999,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua85fhc-8",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3721.4,
+        "y": 255.9,
+        "width": 32.90000000000009,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua85xji-a",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3333.2,
+        "y": 255.9,
+        "width": 82,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua863ud-b",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3207.3,
+        "y": 255.9,
+        "width": 82,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8699k-c",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2935.9,
+        "y": 255.9,
+        "width": 233.5,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua86lj4-d",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2602.6,
+        "y": 255.9,
+        "width": 233,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua86rov-e",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2871.5,
+        "y": 255.9,
+        "width": 29.40000000000009,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua873ll-f",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2481.5,
+        "y": 255.9,
+        "width": 82.59999999999991,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua877xb-g",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2356.5,
+        "y": 255.9,
+        "width": 82.59999999999991,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua87cqb-h",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2085.2,
+        "y": 255.9,
+        "width": 235.9000000000001,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua87jka-i",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1748.4,
+        "y": 255.9,
+        "width": 235.9000000000001,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua87ngj-j",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2022.4,
+        "y": 255.9,
+        "width": 26.40000000000009,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua8807d-k",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1632,
+        "y": 255.9,
+        "width": 81.29999999999995,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua884mm-l",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1506.6,
+        "y": 255.9,
+        "width": 81.29999999999995,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua88al1-m",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1237.7,
+        "y": 255.9,
+        "width": 235.5,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua88h5f-n",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1172.5,
+        "y": 255.9,
+        "width": 28.5,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua88mg6-o",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 908.1,
+        "y": 255.9,
+        "width": 230.89999999999998,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua88rma-p",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 790.8,
+        "y": 255.9,
+        "width": 81.20000000000005,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua88v8e-q",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 663.6,
+        "y": 255.9,
+        "width": 81.20000000000005,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua88znn-r",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 384.3,
+        "y": 255.9,
+        "width": 247.49999999999994,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua89lqw-s",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 319.3,
+        "y": 255.9,
+        "width": 33.80000000000001,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
+    {
+      "uid": "feature-mua89pnn-t",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 51.1,
+        "y": 255.9,
+        "width": 237.79999999999998,
+        "height": 1.4000000000000057
+      },
+      "kind": "wall",
+      "label": "",
+      "color": "#111827",
+      "themeAware": true,
+      "thickness": 5,
+      "lineStart": {
+        "x": 0,
+        "y": 0.5
+      },
+      "lineEnd": {
+        "x": 1,
+        "y": 0.5
+      }
+    },
     {
       "uid": "feature-mu9o3c65-cw",
       "id": "Y-32b",
@@ -102715,7 +103590,383 @@
       "color": "#f0e8de",
       "rotation": 0,
       "type": "booth-suffix-marker"
+    },
+    {
+      "uid": "feature-mua83tyq-1",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4450.6,
+        "y": 10.6,
+        "width": 139,
+        "height": 214.9
+      },
+      "kind": "highlight",
+      "preset": "custom",
+      "label": "Female Toilet",
+      "color": "#ff88ff",
+      "rotation": 0
+    },
+    {
+      "uid": "feature-mua8jyoc-14",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4510.5,
+        "y": 967.7,
+        "width": 52.4,
+        "height": 0.5
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8kmwe-15",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4149.1,
+        "y": 1628.8,
+        "width": 0.1,
+        "height": 40.9
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 0.5,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8lax2-17",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4178.5,
+        "y": 1622.3,
+        "width": 0.8,
+        "height": 39.2
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8ll48-18",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3323.5,
+        "y": 1622.3,
+        "width": 0.8,
+        "height": 39.2
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8ll48-19",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3198.8,
+        "y": 274.1,
+        "width": 0.1,
+        "height": 40.9
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#009d00",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 0.5,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8loh2-1a",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2473.9,
+        "y": 1622.3,
+        "width": 0.8,
+        "height": 39.2
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8loh2-1b",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 2444.5,
+        "y": 1628.8,
+        "width": 0.1,
+        "height": 40.9
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 0.5,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8lsh7-1c",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1624.3,
+        "y": 1622.3,
+        "width": 0.8,
+        "height": 39.2
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8lsh7-1d",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 1594.9,
+        "y": 1628.8,
+        "width": 0.1,
+        "height": 40.9
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 0.5,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8lwy5-1e",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 766.7,
+        "y": 1622.3,
+        "width": 0.8,
+        "height": 39.2
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8lwy5-1f",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 737.3,
+        "y": 1628.8,
+        "width": 0.1,
+        "height": 40.9
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 0.5,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8ma8q-1g",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3236.1,
+        "y": 269.5,
+        "width": 0.8,
+        "height": 39.2
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#c0c0c0",
+      "themeAware": false,
+      "thickness": 4,
+      "lineStart": {
+        "x": 1,
+        "y": 1
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "uid": "feature-mua8nbnv-1h",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3221.2,
+        "y": 86.5,
+        "width": 159.8,
+        "height": 113.9
+      },
+      "kind": "arrow",
+      "label": "",
+      "color": "#009d00",
+      "themeAware": false,
+      "thickness": 5,
+      "lineStart": {
+        "x": 1,
+        "y": 0
+      },
+      "lineEnd": {
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "uid": "feature-mua8noui-1i",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 3264.4,
+        "y": 128.8,
+        "width": 73.5,
+        "height": 29.200000000000017
+      },
+      "kind": "text",
+      "label": "Circle Entry",
+      "color": "#111827",
+      "themeAware": true,
+      "rotation": 0
+    },
+    {
+      "uid": "feature-mua8q1mw-1l",
+      "id": null,
+      "status": "accepted",
+      "geometry": {
+        "type": "rect",
+        "x": 4020.3,
+        "y": 924,
+        "width": 377.1999999999998,
+        "height": 70.39999999999998
+      },
+      "kind": "text",
+      "label": "Corporate Booth Area",
+      "color": "#111827",
+      "themeAware": true,
+      "rotation": 0
     }
   ],
-  "updatedAt": "2026-09-20T17:37:27.217Z"
+  "updatedAt": "2026-09-20T20:00:34.793Z"
 }
