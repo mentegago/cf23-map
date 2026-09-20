@@ -9,9 +9,7 @@ import '../widgets/map_viewer.dart';
 import '../widgets/version_notification.dart';
 
 class MapScreenDesktopView extends StatelessWidget {
-  final List<MergedCell> mergedCells;
-  final int rows;
-  final int cols;
+  final MapLayout mapLayout;
   final void Function(Creator, {required String source, String searchQuery})
       onCreatorSelected;
   final Future<void> Function()? onClearSelection;
@@ -19,9 +17,7 @@ class MapScreenDesktopView extends StatelessWidget {
 
   const MapScreenDesktopView({
     super.key,
-    required this.mergedCells,
-    required this.rows,
-    required this.cols,
+    required this.mapLayout,
     required this.onCreatorSelected,
     required this.onClearSelection,
     required this.onBoothTap,
@@ -55,9 +51,7 @@ class MapScreenDesktopView extends StatelessWidget {
           child: Stack(
             children: [
               MapViewer(
-                mergedCells: mergedCells,
-                rows: rows,
-                cols: cols,
+                mapLayout: mapLayout,
                 onBoothTap: onBoothTap,
               ),
               const FABButton(isDesktop: true),

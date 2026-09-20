@@ -12,9 +12,7 @@ import '../widgets/version_notification.dart';
 import '../design_system/cf_design_system.dart';
 
 class MapScreenMobileView extends StatefulWidget {
-  final List<MergedCell> mergedCells;
-  final int rows;
-  final int cols;
+  final MapLayout mapLayout;
   final Future<void> Function() onClearSelection;
   final void Function(Creator, {required String source, String searchQuery})
       onCreatorSelected;
@@ -22,9 +20,7 @@ class MapScreenMobileView extends StatefulWidget {
 
   const MapScreenMobileView({
     super.key,
-    required this.mergedCells,
-    required this.rows,
-    required this.cols,
+    required this.mapLayout,
     required this.onClearSelection,
     required this.onCreatorSelected,
     required this.onBoothTap,
@@ -92,9 +88,7 @@ class _MapScreenMobileViewState extends State<MapScreenMobileView>
     return Stack(
       children: [
         MapViewer(
-          mergedCells: widget.mergedCells,
-          rows: widget.rows,
-          cols: widget.cols,
+          mapLayout: widget.mapLayout,
           onBoothTap: widget.onBoothTap,
         ),
         const FABButton(isDesktop: false),

@@ -81,11 +81,13 @@ class BoothProximityData {
   }
 
   static String _canonicalBooth(String booth) {
-    final match = RegExp(r'^([A-Z]+)-0*(\d+)([aAbB]?)$')
+    final match = RegExp(r'^(?:([A-Z]+)-)?0*(\d+)([A-Z]?)$')
         .firstMatch(booth.trim().toUpperCase());
     if (match == null) return booth.trim();
     final number = int.tryParse(match.group(2)!);
     if (number == null) return booth.trim();
-    return '${match.group(1)}-$number${match.group(3)!.toLowerCase()}';
+    final normalized = '$number${match.group(3)!.toLowerCase()}';
+    final section = match.group(1);
+    return section == null ? normalized : '$section-$normalized';
   }
 }

@@ -23,9 +23,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  List<MergedCell>? _mergedCells;
-  int _rows = 0;
-  int _cols = 0;
+  MapLayout? _mapLayout;
   bool _isLoading = true;
   String? _error;
 
@@ -39,24 +37,14 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final startTime = DateTime.now();
 
-      // Load map data
-      final grid = await MapParser.loadMapData();
+      final layout = await MapParser.loadMapLayout();
 
       print(
           'Map data loaded in ${DateTime.now().difference(startTime).inMilliseconds}ms');
-
-      final mergeStart = DateTime.now();
-      final merged = MapParser.mergeCells(grid);
-      print(
-          'Cells merged in ${DateTime.now().difference(mergeStart).inMilliseconds}ms');
-      print(
-          'Total cells: ${grid.length * (grid.isEmpty ? 0 : grid[0].length)}');
-      print('Merged to: ${merged.length} cells');
+      print('Loaded ${layout.features.length} map features');
 
       setState(() {
-        _mergedCells = merged;
-        _rows = grid.length;
-        _cols = grid.isEmpty ? 0 : grid[0].length;
+        _mapLayout = layout;
         _isLoading = false;
       });
 
@@ -310,9 +298,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildDesktopLayout(BuildContext context) {
     return MapScreenDesktopView(
-      mergedCells: _mergedCells!,
-      rows: _rows,
-      cols: _cols,
+      mapLayout: _mapLayout!,
       onCreatorSelected: _handleCreatorSelected,
       onClearSelection: _clearSelection,
       onBoothTap: _handleBoothTap,
@@ -321,9 +307,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildMobileLayout(BuildContext context) {
     return MapScreenMobileView(
-      mergedCells: _mergedCells!,
-      rows: _rows,
-      cols: _cols,
+      mapLayout: _mapLayout!,
       onClearSelection: _clearSelection,
       onCreatorSelected: _handleCreatorSelected,
       onBoothTap: _handleBoothTap,

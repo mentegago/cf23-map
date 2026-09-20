@@ -7,6 +7,7 @@ import argparse
 from collections import defaultdict, deque
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -15,8 +16,12 @@ import sys
 SCHEMA_VERSION = 1
 MAX_DISTANCE = 32
 MAX_NEIGHBORS = 48
-BOOTH_PATTERN = re.compile(r"^([A-Z]+)-0*(\d+)([ab]?)$")
+BOOTH_PATTERN = re.compile(
+    r"^(?:([A-Z]+)-)?0*(\d+)([a-z]?)$",
+    re.IGNORECASE,
+)
 DIRECTIONS = ((-1, 0), (1, 0), (0, -1), (0, 1))
+SEMANTIC_DISTANCE_UNIT = 15.0
 
 
 def canonical_booth(value: object) -> str | None:
@@ -24,7 +29,8 @@ def canonical_booth(value: object) -> str | None:
     if match is None:
         return None
     section, number, suffix = match.groups()
-    return f"{section}-{int(number)}{suffix}"
+    canonical = f"{int(number)}{suffix.lower()}"
+    return f"{section.upper()}-{canonical}" if section else canonical
 
 
 def is_empty(grid: list[list[object]], row: int, col: int) -> bool:
@@ -97,14 +103,15 @@ def distances_from(
     return distances
 
 
-def generate(map_path: Path) -> dict[str, object]:
-    map_bytes = map_path.read_bytes()
-    grid = json.loads(map_bytes)
-    canonical_map_bytes = json.dumps(
-        grid,
+def encoded_map_bytes(document: object) -> bytes:
+    return json.dumps(
+        document,
         separators=(",", ":"),
         ensure_ascii=False,
     ).encode("utf-8")
+
+
+def generate_grid(grid: list[list[object]], map_sha256: str) -> dict[str, object]:
     cells_by_booth: dict[str, set[tuple[int, int]]] = defaultdict(set)
     for row, values in enumerate(grid):
         for col, value in enumerate(values):
@@ -149,12 +156,85 @@ def generate(map_path: Path) -> dict[str, object]:
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "map_sha256": hashlib.sha256(canonical_map_bytes).hexdigest(),
+        "map_sha256": map_sha256,
         "max_distance": MAX_DISTANCE,
         "max_neighbors": MAX_NEIGHBORS,
         "booths": booths,
         "neighbors": neighbors,
     }
+
+
+def generate_semantic(
+    document: dict[str, object], map_sha256: str
+) -> dict[str, object]:
+    positions: dict[str, tuple[float, float]] = {}
+    features = document.get("features")
+    if not isinstance(features, list):
+        raise RuntimeError("Semantic map does not contain a features list")
+
+    for feature in features:
+        if (
+            not isinstance(feature, dict)
+            or feature.get("kind") != "booth"
+            or feature.get("status") == "suggestion"
+        ):
+            continue
+        booth = canonical_booth(feature.get("id", ""))
+        geometry = feature.get("geometry")
+        if booth is None or not isinstance(geometry, dict):
+            continue
+        try:
+            x = float(geometry["x"])
+            y = float(geometry["y"])
+            width = float(geometry["width"])
+            height = float(geometry["height"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if width <= 0 or height <= 0:
+            continue
+        if booth in positions:
+            raise RuntimeError(f"Duplicate booth ID in semantic map: {booth}")
+        positions[booth] = (x + width / 2, y + height / 2)
+
+    booths = sorted(positions)
+    booth_indices = {booth: index for index, booth in enumerate(booths)}
+    neighbors: list[list[list[int]]] = []
+    for source in booths:
+        source_x, source_y = positions[source]
+        distances: list[tuple[str, int]] = []
+        for target in booths:
+            if source == target:
+                continue
+            target_x, target_y = positions[target]
+            pixels = math.hypot(target_x - source_x, target_y - source_y)
+            distance = max(1, round(pixels / SEMANTIC_DISTANCE_UNIT))
+            if distance <= MAX_DISTANCE:
+                distances.append((target, distance))
+        ordered = sorted(distances, key=lambda item: (item[1], item[0]))[
+            :MAX_NEIGHBORS
+        ]
+        neighbors.append(
+            [[booth_indices[target], distance] for target, distance in ordered]
+        )
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "map_sha256": map_sha256,
+        "max_distance": MAX_DISTANCE,
+        "max_neighbors": MAX_NEIGHBORS,
+        "booths": booths,
+        "neighbors": neighbors,
+    }
+
+
+def generate(map_path: Path) -> dict[str, object]:
+    document = json.loads(map_path.read_bytes())
+    map_sha256 = hashlib.sha256(encoded_map_bytes(document)).hexdigest()
+    if isinstance(document, dict) and isinstance(document.get("features"), list):
+        return generate_semantic(document, map_sha256)
+    if isinstance(document, list):
+        return generate_grid(document, map_sha256)
+    raise RuntimeError("Unsupported map JSON format")
 
 
 def encoded(data: dict[str, object]) -> str:

@@ -1,35 +1,33 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/map_cell.dart';
+
 import '../models/creator.dart';
+import '../models/map_cell.dart';
 import '../services/creator_data_service.dart';
 
 class MapViewer extends StatefulWidget {
-  final List<MergedCell> mergedCells;
-  final int rows;
-  final int cols;
-  final Function(String?)? onBoothTap;
+  final MapLayout mapLayout;
+  final ValueChanged<String?>? onBoothTap;
 
-  const MapViewer({
-    super.key,
-    required this.mergedCells,
-    required this.rows,
-    required this.cols,
-    this.onBoothTap,
-  });
+  const MapViewer({super.key, required this.mapLayout, this.onBoothTap});
 
   @override
   State<MapViewer> createState() => _MapViewerState();
 }
 
-class _MapViewerState extends State<MapViewer> with SingleTickerProviderStateMixin {
-  final TransformationController _transformationController = TransformationController();
-  final double _cellSize = 40.0;
-  String? _hoveredBooth;
-  late List<List<String?>> _boothLookupGrid; // O(1) spatial lookup
+class _MapViewerState extends State<MapViewer>
+    with SingleTickerProviderStateMixin {
+  static const double _spatialCellSize = 96;
+  static const double _legacyRenderedBoothSize = 20;
+  final TransformationController _transformationController =
+      TransformationController();
+  final Map<String, List<MapFeature>> _boothSpatialIndex = {};
   late AnimationController _animationController;
   Animation<Matrix4>? _animation;
+  MapFeature? _hoveredBooth;
   int _animationId = 0;
 
   bool get _isDesktop => MediaQuery.of(context).size.width > 768;
@@ -37,53 +35,24 @@ class _MapViewerState extends State<MapViewer> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _buildBoothLookupGrid();
+    _buildSpatialIndex();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 700),
     );
-    
-    // Add listener to provider for selection changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final provider = context.read<CreatorDataProvider>();
-      provider.addListener(_onProviderChanged);
-    });
-    
-    // Set initial zoom and position after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      
-      // Get viewport size
-      final viewportWidth = MediaQuery.of(context).size.width;
-      final viewportHeight = MediaQuery.of(context).size.height;
-      
-      // Calculate map size
-      final mapWidth = widget.cols * _cellSize;
-      final mapHeight = widget.rows * _cellSize;
-      
-      // Set initial scale (e.g., 0.5 to zoom out, 1.0 for default, 2.0 to zoom in)
-      const initialScale = 0.5;
-      
-      // Center the map with the initial scale
-      final translationX = (viewportWidth - mapWidth * initialScale) / 1.3;
-      final translationY = (viewportHeight - mapHeight * initialScale) / 1.3;
-      
-      // Create initial transformation
-      _transformationController.value = Matrix4.identity()
-        ..translate(translationX, translationY)
-        ..scale(initialScale);
+      context.read<CreatorDataProvider>().addListener(_onProviderChanged);
+      _fitMap();
     });
   }
 
   @override
   void dispose() {
-    // Remove provider listener
     try {
-      final provider = context.read<CreatorDataProvider>();
-      provider.removeListener(_onProviderChanged);
-    } catch (e) {
-      // Provider might be disposed already
+      context.read<CreatorDataProvider>().removeListener(_onProviderChanged);
+    } catch (_) {
+      // The provider may already be disposed during application shutdown.
     }
     _animationController.dispose();
     _transformationController.dispose();
@@ -93,291 +62,230 @@ class _MapViewerState extends State<MapViewer> with SingleTickerProviderStateMix
   @override
   void didUpdateWidget(MapViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // Rebuild lookup grid if cells changed
-    if (oldWidget.mergedCells != widget.mergedCells) {
-      _buildBoothLookupGrid();
+    if (!identical(oldWidget.mapLayout, widget.mapLayout)) {
+      _buildSpatialIndex();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fitMap());
     }
   }
 
-  // Handle provider changes for selection animations
-  void _onProviderChanged() {
-    if (!mounted) return;
-    
-    final provider = context.read<CreatorDataProvider>();
-    final currentSelectedCreator = provider.selectedCreator;
-    
-    if (currentSelectedCreator != null && currentSelectedCreator.booths.isNotEmpty) {
-      _centerOnBooths(currentSelectedCreator.booths);
+  void _fitMap() {
+    if (!mounted ||
+        widget.mapLayout.width <= 0 ||
+        widget.mapLayout.height <= 0) {
+      return;
     }
+    final viewport = context.size ?? MediaQuery.of(context).size;
+    final scale = _initialScale(viewport);
+    final x = (viewport.width - widget.mapLayout.width * scale) / 2;
+    final y = (viewport.height - widget.mapLayout.height * scale) / 2;
+    _transformationController.value = Matrix4.identity()
+      ..translate(x, y)
+      ..scale(scale);
   }
 
-  // Precompute a 2D grid for O(1) booth lookups
-  void _buildBoothLookupGrid() {
-    // Initialize grid with nulls
-    _boothLookupGrid = List.generate(
-      widget.rows,
-      (_) => List.filled(widget.cols, null),
-    );
-    
-    // Fill grid with booth IDs
-    for (final cell in widget.mergedCells) {
-      if (cell.isBooth) {
-        // Fill all grid positions covered by this booth
-        for (int row = cell.startRow; row < cell.startRow + cell.rowSpan; row++) {
-          for (int col = cell.startCol; col < cell.startCol + cell.colSpan; col++) {
-            if (row < widget.rows && col < widget.cols) {
-              _boothLookupGrid[row][col] = cell.content;
-            }
-          }
+  double _initialScale(Size viewport) {
+    var booths = widget.mapLayout.features
+        .where((feature) => feature.isBooth && feature.content.contains('-'))
+        .toList(growable: false);
+    if (booths.isEmpty) {
+      booths = widget.mapLayout.features
+          .where((feature) => feature.isBooth)
+          .toList(growable: false);
+    }
+    if (booths.isNotEmpty) {
+      final boothSizes = booths
+          .map((feature) => math.sqrt(feature.width * feature.height))
+          .where((size) => size > 0)
+          .toList()
+        ..sort();
+      if (boothSizes.isNotEmpty) {
+        final medianBoothSize = boothSizes[boothSizes.length ~/ 2];
+        return (_legacyRenderedBoothSize / medianBoothSize).clamp(0.2, 1.5);
+      }
+    }
+
+    // Annotation-only maps have no booth scale to match, so fit them normally.
+    return math
+        .min(
+          viewport.width / widget.mapLayout.width,
+          viewport.height / widget.mapLayout.height,
+        )
+        .clamp(0.05, 1.25);
+  }
+
+  void _buildSpatialIndex() {
+    _boothSpatialIndex.clear();
+    for (final feature
+        in widget.mapLayout.features.where((item) => item.isBooth)) {
+      final left = (feature.x / _spatialCellSize).floor();
+      final right = (feature.right / _spatialCellSize).floor();
+      final top = (feature.y / _spatialCellSize).floor();
+      final bottom = (feature.bottom / _spatialCellSize).floor();
+      for (var x = left; x <= right; x++) {
+        for (var y = top; y <= bottom; y++) {
+          (_boothSpatialIndex['$x,$y'] ??= []).add(feature);
         }
       }
     }
   }
 
-  void _centerOnBooths(List<String> boothIds) {
-    // Increment animation ID to invalidate any pending animation delays
-    _animationId++;
-    final currentAnimationId = _animationId;
-    
-    // Stop any running animation immediately - don't reset so it stays at current position
-    _animationController.stop();
-    
-    // Remove old animation listener if it exists
-    _animation?.removeListener(_animationListener);
-    
-    // Find all booth cells
-    final boothCells = widget.mergedCells.where(
-      (cell) => boothIds.contains(cell.content),
-    ).toList();
-
-    if (boothCells.isEmpty) return;
-
-    // Calculate the average center position of all booths
-    double totalX = 0;
-    double totalY = 0;
-    
-    for (final cell in boothCells) {
-      totalX += (cell.startCol + cell.colSpan / 2) * _cellSize;
-      totalY += (cell.startRow + cell.rowSpan / 2) * _cellSize;
-    }
-
-    final avgX = totalX / boothCells.length;
-    final avgY = totalY / boothCells.length;
-
-    // Determine target zoom based on booth area
-    // Multi-letter areas (AA-AF) need more zoom out to see context
-    bool isMultiLetterArea = false;
-    if (boothCells.isNotEmpty) {
-      final firstBoothId = boothCells.first.content;
-      final hyphenIndex = firstBoothId.indexOf('-');
-      if (hyphenIndex > 0) {
-        final area = firstBoothId.substring(0, hyphenIndex);
-        isMultiLetterArea = area.length > 1;
+  MapFeature? _findBoothAt(double x, double y) {
+    final bucket = _boothSpatialIndex[
+        '${(x / _spatialCellSize).floor()},${(y / _spatialCellSize).floor()}'];
+    if (bucket == null) return null;
+    for (final booth in bucket.reversed) {
+      if (x >= booth.x &&
+          x <= booth.right &&
+          y >= booth.y &&
+          y <= booth.bottom) {
+        return booth;
       }
     }
-    final targetScale = isMultiLetterArea ? 0.6 : 0.8;
-
-    // Delay animation to let search panel finish closing
-    Future.delayed(const Duration(milliseconds: 250), () {
-      if (!mounted || currentAnimationId != _animationId) return;
-      
-      // Now get the current transform again in case user interacted with the map during the delay
-      final currentTransform = _transformationController.value;
-      
-      // Get the viewport size
-      final screenWidth = MediaQuery.of(context).size.width;
-      final screenHeight = MediaQuery.of(context).size.height;
-      
-      // On desktop, account for sidebar width (400px)
-      final viewportWidth = _isDesktop ? screenWidth - 400 : screenWidth;
-      final viewportHeight = screenHeight;
-
-      // Calculate the translation to center the booths with target zoom
-      final translationX = viewportWidth / 2 - avgX * targetScale;
-      final translationY = viewportHeight / (_isDesktop ? 2 : 3) - avgY * targetScale;
-
-      // Create target transformation
-      final targetTransform = Matrix4.identity()
-        ..translate(translationX, translationY)
-        ..scale(targetScale);
-      
-      // Animate from current actual position to target transformation
-      _animation = Matrix4Tween(
-        begin: currentTransform,
-        end: targetTransform,
-      ).animate(CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOutCubic,
-      ));
-      
-      // Reset and start the new animation
-      _animationController.reset();
-      _animationController.forward();
-
-      _animation!.addListener(_animationListener);
-    });
-  }
-
-  // Animation listener that updates transformation
-  void _animationListener() {
-    if (_animation != null) {
-      _transformationController.value = _animation!.value;
-    }
-  }
-
-  // O(1) booth lookup using precomputed grid
-  String? _findBoothAt(double x, double y) {
-    final col = (x / _cellSize).floor();
-    final row = (y / _cellSize).floor();
-    
-    // Bounds check
-    if (row < 0 || row >= widget.rows || col < 0 || col >= widget.cols) {
-      return null;
-    }
-    
-    return _boothLookupGrid[row][col];
+    return null;
   }
 
   void _handleTap(TapUpDetails details) {
     if (widget.onBoothTap == null) return;
-    
-    // Clear hover state on tap (for touch devices)
-    if (_hoveredBooth != null) {
-      setState(() {
-        _hoveredBooth = null;
-      });
-    }
-    
-    // The tap position is already in the child coordinate system (map space)
-    // because GestureDetector is a child of InteractiveViewer
-    final tapX = details.localPosition.dx;
-    final tapY = details.localPosition.dy;
-    
-    final boothId = _findBoothAt(tapX, tapY);
-    widget.onBoothTap!(boothId);
+    final booth =
+        _findBoothAt(details.localPosition.dx, details.localPosition.dy);
+    widget.onBoothTap!(booth?.content);
   }
 
   void _handleHover(PointerEvent event) {
-    // Ignore hover events from touch devices
-    if (event.kind == PointerDeviceKind.touch) {
-      return;
-    }
-    
-    final hoverX = event.localPosition.dx;
-    final hoverY = event.localPosition.dy;
-    
-    final boothId = _findBoothAt(hoverX, hoverY);
-    
-    if (boothId != _hoveredBooth) {
-      setState(() {
-        _hoveredBooth = boothId;
-      });
-    }
+    if (event.kind == PointerDeviceKind.touch) return;
+    final booth = _findBoothAt(event.localPosition.dx, event.localPosition.dy);
+    if (!identical(booth, _hoveredBooth)) setState(() => _hoveredBooth = booth);
   }
 
   void _handleExit(PointerEvent event) {
-    if (_hoveredBooth != null) {
-      setState(() {
-        _hoveredBooth = null;
-      });
+    if (_hoveredBooth != null) setState(() => _hoveredBooth = null);
+  }
+
+  void _onProviderChanged() {
+    if (!mounted) return;
+    final creator = context.read<CreatorDataProvider>().selectedCreator;
+    if (creator != null && creator.booths.isNotEmpty) {
+      _centerOnBooths(creator.booths);
     }
   }
 
-  MergedCell? _getHoveredCell() {
-    if (_hoveredBooth == null) return null;
-    return widget.mergedCells.firstWhere(
-      (cell) => cell.content == _hoveredBooth,
-      orElse: () => widget.mergedCells.first, // dummy, won't be used
-    );
+  void _centerOnBooths(List<String> boothIds) {
+    final booths = widget.mapLayout.features
+        .where(
+            (feature) => feature.isBooth && boothIds.contains(feature.content))
+        .toList();
+    if (booths.isEmpty) return;
+
+    _animationId++;
+    final animationId = _animationId;
+    _animationController.stop();
+    _animation?.removeListener(_animationListener);
+    final left = booths.map((item) => item.x).reduce(math.min);
+    final right = booths.map((item) => item.right).reduce(math.max);
+    final top = booths.map((item) => item.y).reduce(math.min);
+    final bottom = booths.map((item) => item.bottom).reduce(math.max);
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (!mounted || animationId != _animationId) return;
+      final viewport = context.size ?? MediaQuery.of(context).size;
+      final groupWidth = math.max(24.0, right - left);
+      final groupHeight = math.max(24.0, bottom - top);
+      final targetScale = math
+          .min(
+            viewport.width * 0.32 / groupWidth,
+            viewport.height * 0.28 / groupHeight,
+          )
+          .clamp(0.45, 6.0);
+      final centerX = (left + right) / 2;
+      final centerY = (top + bottom) / 2;
+      final target = Matrix4.identity()
+        ..translate(
+          viewport.width / 2 - centerX * targetScale,
+          viewport.height / (_isDesktop ? 2 : 3) - centerY * targetScale,
+        )
+        ..scale(targetScale);
+      _animation = Matrix4Tween(
+        begin: _transformationController.value,
+        end: target,
+      ).animate(CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOutCubic,
+      ));
+      _animation!.addListener(_animationListener);
+      _animationController.forward(from: 0);
+    });
+  }
+
+  void _animationListener() {
+    final animation = _animation;
+    if (animation != null) _transformationController.value = animation.value;
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scaffoldBackgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final provider = context.watch<CreatorDataProvider>();
+    final selectedIds = provider.selectedCreator?.booths ?? const <String>[];
+    final selectedFeatures = selectedIds.isEmpty
+        ? const <MapFeature>[]
+        : widget.mapLayout.features
+            .where((feature) =>
+                feature.isBooth && selectedIds.contains(feature.content))
+            .toList(growable: false);
+    final mapSize = Size(widget.mapLayout.width, widget.mapLayout.height);
+    final mediaSize = MediaQuery.of(context).size;
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    
-    // Get selected creator and booth mapping from provider
-    final creatorProvider = context.watch<CreatorDataProvider>();
-    final selectedCreator = creatorProvider.selectedCreator;
-    final selectedBooths = selectedCreator?.booths;
-    final boothToCreators = creatorProvider.boothToCreators;
-    
-    final isCreatorCustomListMode = creatorProvider.isCreatorCustomListMode;
-    
-    // Find selected cells
-    final selectedCells = selectedBooths != null
-        ? widget.mergedCells.where((cell) => selectedBooths.contains(cell.content)).toList()
-        : <MergedCell>[];
-    
     return InteractiveViewer(
       transformationController: _transformationController,
-      minScale: 0.1,
-      maxScale: 1.5,
+      minScale: 0.04,
+      maxScale: 8,
       boundaryMargin: EdgeInsets.only(
-        left: screenWidth * 0.8,
-        right: screenWidth * 0.8,
-        top: screenHeight * 0.8,
-        bottom: screenHeight * 0.8 
-          + (!_isDesktop && isCreatorCustomListMode ? 2000 : 0), // Add extra space for creator custom list information on mobile
+        left: mediaSize.width * 0.8,
+        right: mediaSize.width * 0.8,
+        top: mediaSize.height * 0.8,
+        bottom: mediaSize.height * 0.8 +
+            (!_isDesktop && provider.isCreatorCustomListMode ? 2000 : 0),
       ),
       constrained: false,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapUp: _handleTap,
         child: MouseRegion(
-          cursor: _hoveredBooth != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          cursor: _hoveredBooth == null
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
           onHover: _handleHover,
           onExit: _handleExit,
           child: Stack(
             children: [
-              // Main map (doesn't repaint on hover or selection)
               RepaintBoundary(
                 child: CustomPaint(
-                  size: Size(
-                    widget.cols * _cellSize,
-                    widget.rows * _cellSize,
-                  ),
+                  size: mapSize,
                   painter: MapPainter(
-                    mergedCells: widget.mergedCells,
-                    cellSize: _cellSize,
-                    isDark: isDark,
-                    scaffoldBackgroundColor: scaffoldBackgroundColor,
-                    boothToCreators: boothToCreators,
-                    isCreatorCustomListMode: isCreatorCustomListMode,
+                    features: widget.mapLayout.features,
+                    isDark: Theme.of(context).brightness == Brightness.dark,
+                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                    boothToCreators: provider.boothToCreators,
+                    isCreatorCustomListMode: provider.isCreatorCustomListMode,
                   ),
                 ),
               ),
-              // Hover overlay (only repaints hover effect)
               if (_hoveredBooth != null)
                 RepaintBoundary(
                   child: CustomPaint(
-                    size: Size(
-                      widget.cols * _cellSize,
-                      widget.rows * _cellSize,
-                    ),
+                    size: mapSize,
                     painter: HoverOverlayPainter(
-                      hoveredCell: _getHoveredCell(),
-                      cellSize: _cellSize,
-                      isDark: isDark,
+                      hoveredFeature: _hoveredBooth,
+                      isDark: Theme.of(context).brightness == Brightness.dark,
                     ),
                   ),
                 ),
-              // Selection overlay (only repaints selection effect)
-              if (selectedCells.isNotEmpty)
+              if (selectedFeatures.isNotEmpty)
                 RepaintBoundary(
                   child: CustomPaint(
-                    size: Size(
-                      widget.cols * _cellSize,
-                      widget.rows * _cellSize,
-                    ),
+                    size: mapSize,
                     painter: SelectionOverlayPainter(
-                      selectedCells: selectedCells,
-                      cellSize: _cellSize,
-                      isDark: isDark,
+                      selectedFeatures: selectedFeatures,
+                      isDark: Theme.of(context).brightness == Brightness.dark,
                     ),
                   ),
                 ),
@@ -387,306 +295,200 @@ class _MapViewerState extends State<MapViewer> with SingleTickerProviderStateMix
       ),
     );
   }
-
 }
 
 class MapPainter extends CustomPainter {
-  final List<MergedCell> mergedCells;
-  final double cellSize;
+  final List<MapFeature> features;
   final bool isDark;
-  final Color scaffoldBackgroundColor;
+  final Color backgroundColor;
   final Map<String, List<Creator>>? boothToCreators;
   final bool isCreatorCustomListMode;
 
-  MapPainter({
-    required this.mergedCells,
-    required this.cellSize,
+  const MapPainter({
+    required this.features,
     required this.isDark,
-    required this.scaffoldBackgroundColor,
+    required this.backgroundColor,
     required this.boothToCreators,
     required this.isCreatorCustomListMode,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw background
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = scaffoldBackgroundColor,
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..color = backgroundColor);
+    for (final feature in features) {
+      if (!feature.isBooth) _drawFeatureIfVisible(canvas, feature);
+    }
+    // Booths are the primary interactive layer and must stay above map markers.
+    for (final feature in features) {
+      if (feature.isBooth) _drawFeatureIfVisible(canvas, feature);
+    }
+  }
 
-    const totalColumnWidth = 158;
-    const totalColumnHeight = 103;
+  void _drawFeatureIfVisible(Canvas canvas, MapFeature feature) {
+    if (feature.isEmpty) return;
+    _drawFeature(
+      canvas,
+      feature,
+      Rect.fromLTWH(feature.x, feature.y, feature.width, feature.height),
+    );
+  }
 
-    final hall7Rect = Rect.fromLTWH(
-      0.5,
-      3 / totalColumnHeight * size.height,
-      size.width * 50 / totalColumnWidth - 1,
-      size.height * 99 / totalColumnHeight,
-    );
-    canvas.drawRect(
-      hall7Rect,
-      Paint()..color = _getHallColor("HALL 7").withValues(alpha: isDark ? 0.15 : 0.5),
-    );
-    canvas.drawRect(
-      hall7Rect,
-      Paint()
-        ..color = _getHallBorderColor("HALL 7")
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
-    );
-
-    final hall8Rect = Rect.fromLTWH(
-      size.width * 50 / totalColumnWidth + 0.5,
-      3 / totalColumnHeight * size.height,
-      size.width * 50 / totalColumnWidth - 1,
-      size.height * 99 / totalColumnHeight,
-    );
-    canvas.drawRect(
-      hall8Rect,
-      Paint()..color = _getHallColor("HALL 8").withValues(alpha: isDark ? 0.15 : 0.5),
-    );
-    canvas.drawRect(
-      hall8Rect,
-      Paint()
-        ..color = _getHallBorderColor("HALL 8")
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
-    );
-
-    final hall9Rect = Rect.fromLTWH(
-      size.width * 100 / totalColumnWidth + 0.5,
-      3 / totalColumnHeight * size.height,
-      size.width * 58 / totalColumnWidth - 1,
-      size.height * 99 / totalColumnHeight,
-    );
-    canvas.drawRect(
-      hall9Rect,
-      Paint()..color = _getHallColor("HALL 9").withValues(alpha: isDark ? 0.15 : 0.5),
-    );
-    canvas.drawRect(
-      hall9Rect,
-      Paint()
-        ..color = _getHallBorderColor("HALL 9")
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
-    );
-
-    // Only draw text if zoomed in enough
-    final shouldDrawText = cellSize >= 30;
-    final useRoundedCorners = cellSize >= 20;
-    final cornerRadius = cellSize >= 60
-        ? const Radius.circular(6)
-        : (cellSize >= 40 ? const Radius.circular(4) : const Radius.circular(2));
-    
-    // Pre-create paints to avoid creating them in the loop
-    final fillPaint = Paint()..style = PaintingStyle.fill;
-    final borderPaint = Paint()
+  void _drawFeature(Canvas canvas, MapFeature feature, Rect rect) {
+    if (feature.isText) {
+      _drawLabel(canvas, feature, rect, _featureColor(feature));
+      return;
+    }
+    final fill = Paint()
+      ..style = PaintingStyle.fill
+      ..color = _fillColor(feature);
+    final border = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    
-    // Single pass through cells
-    for (final cell in mergedCells) {
-      if (cell.isEmpty) continue;
+      ..strokeWidth = feature.isBooth ? 1.25 : 1
+      ..color = _borderColor(feature);
+    final radius = Radius.circular(
+      math.min(2.5, math.min(rect.width, rect.height) * 0.1),
+    );
 
-      final left = cell.startCol * cellSize;
-      final top = cell.startRow * cellSize;
-      final width = cell.colSpan * cellSize;
-      final height = cell.rowSpan * cellSize;
+    if (feature.isArea) {
+      canvas.drawRect(rect, fill);
+      _drawDashedRect(canvas, rect, border);
+    } else if (feature.isWall) {
+      canvas.drawRect(rect, fill);
+    } else {
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, radius), fill);
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, radius), border);
+    }
 
-      final rect = Rect.fromLTWH(left + 0.5, top + 0.5, width - 1, height - 1);
-
-      // Draw base fill using a more refined palette
-      Color fillColor = _getCellColor(cell);
-      fillPaint.color = fillColor;
-      if (useRoundedCorners && !cell.isHall) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, cornerRadius),
-          fillPaint,
-        );
-      } else {
-        canvas.drawRect(rect, fillPaint);
-      }
-      
-      // Draw border with dynamic thickness
-      Color borderColor = _getBorderColor(cell);
-      // Scale stroke subtly with zoom for visual consistency
-      final zoomScale = (cellSize / 40.0).clamp(0.8, 2.0);
-      double strokeWidth = (cell.isBooth ? 1.4 : 0.9) * zoomScale;
-      borderPaint.color = borderColor;
-      borderPaint.strokeWidth = strokeWidth;
-      if (useRoundedCorners && !cell.isHall) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, cornerRadius),
-          borderPaint,
-        );
-      } else {
-        canvas.drawRect(rect, borderPaint);
-      }
-      
-      // Draw text if zoomed in and cell is large enough
-      if (shouldDrawText && cell.content.isNotEmpty && width > 20 && height > 15) {
-        _drawText(canvas, cell, rect);
-      }
+    if (feature.content.isNotEmpty) {
+      final textColor = feature.isSectionMarker || feature.isBoothSuffixMarker
+          ? _textColor(feature)
+          : feature.isHighlight
+              ? const Color(0xFF111827)
+              : feature.isArea
+                  ? _featureColor(feature)
+                  : _textColor(feature);
+      _drawLabel(canvas, feature, rect, textColor);
     }
   }
 
-  String _getDisplayText(MergedCell cell) {
-    if (cell.isBooth) {
-      // Extract just the number from booth IDs (e.g., "O-33a" -> "33")
-      final match = RegExp(r'\d+').firstMatch(cell.content);
-      if (match != null) {
-        return match.group(0)!;
-      }
-    }
-    return cell.content;
-  }
-
-  void _drawText(Canvas canvas, MergedCell cell, Rect rect) {
-    final textStyle = _getTextStyle(cell);
-    final displayText = _getDisplayText(cell);
-    final textSpan = TextSpan(
-      text: displayText,
-      style: textStyle,
-    );
-
-    final textPainter = TextPainter(
-      text: textSpan,
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
-      maxLines: cell.rowSpan,
-      ellipsis: '...',
-    );
-
-    textPainter.layout(maxWidth: rect.width - 4);
-
-    // Center the text in the rect
-    final xCenter = rect.left + (rect.width - textPainter.width) / 2;
-    final yCenter = rect.top + (rect.height - textPainter.height) / 2;
-
-    // Remove background pill entirely for a cleaner look
-    // No background pill behind labels for a cleaner look
-
-    textPainter.paint(canvas, Offset(xCenter, yCenter));
-  }
-
-  Color _getCellColor(MergedCell cell) {
-    if (cell.isEmpty) {
-      return Colors.transparent;
-    } else if (cell.isWall) {
-      return isDark ? const Color(0xFF09070D) : const Color(0xFF191522);
-    } else if (cell.isHall) {
-      return _getHallColor(cell.content);
-    } else if (cell.isBooth) {
-      if (boothToCreators?[cell.content]?.isEmpty ?? true) {
-        return isDark ? const Color(0xFF292331) : const Color(0xFFF0E8DE);
-      }
-
-      if (isCreatorCustomListMode) {
-        return const Color.fromARGB(255, 255, 0, 191); // Bright deep orange (material accent) 
-      }
-
-      final section = _getBoothSection(cell.content);
-      return _boothFillColor(section);
-    } else if (cell.isLocationMarker) {
-      if (cell.content == 'a' || cell.content == 'b') {
-        return isDark ? const Color(0xFF292331) : const Color(0xFFF0E8DE);
-      }
+  Color _fillColor(MapFeature feature) {
+    if (feature.isSectionMarker) {
       return isDark ? const Color(0xFF5B4812) : const Color(0xFFFFD84D);
     }
-    return isDark ? const Color(0xFF292331) : const Color(0xFFE8DDD2);
+    if (feature.isBoothSuffixMarker) {
+      return isDark ? const Color(0xFF292331) : const Color(0xFFF0E8DE);
+    }
+    if (feature.isBooth) {
+      if (boothToCreators?[feature.content]?.isEmpty ?? true) {
+        return isDark ? const Color(0xFF292331) : const Color(0xFFF0E8DE);
+      }
+      if (isCreatorCustomListMode) return const Color(0xFFFF00BF);
+      return _boothFillColor(_boothSection(feature.content));
+    }
+    if (feature.isHighlight) {
+      return _featureColor(feature).withValues(alpha: 0.72);
+    }
+    if (feature.isArea) return _featureColor(feature).withValues(alpha: 0.04);
+    if (feature.isWall) {
+      return isDark ? const Color(0xFF09070D) : const Color(0xFF191522);
+    }
+    if (feature.isHall) return _featureColor(feature).withValues(alpha: 0.18);
+    return isDark ? const Color(0xFF5B4812) : const Color(0xFFFFD84D);
   }
 
-  Color _getBorderColor(MergedCell cell) {
-    if (cell.isEmpty) {
-      return Colors.transparent;
-    } else if (cell.isWall) {
-      return isDark ? const Color(0xFF2A2A2A) : const Color(0xFF616161);
-    } else if (cell.isHall) {
-      return _getHallBorderColor(cell.content);
-    } else if (cell.isBooth) {
-      // Check if booth has creators assigned
-      if (boothToCreators?[cell.content]?.isEmpty ?? true) {
-        return isDark ? const Color(0xFF4A4A4A) : const Color(0xFFBDBDBD);
-      }
-
-      if (isCreatorCustomListMode) {
-        return const Color.fromARGB(255, 255, 136, 205); // Bright deep orange (material accent) 
-      }
-
-      final section = _getBoothSection(cell.content);
-      return _boothBorderColor(section);
-    } else if (cell.isLocationMarker) {
-      if (cell.content == 'a' || cell.content == 'b') {
-        return isDark ? const Color(0xFF4A4A4A) : const Color(0xFFBDBDBD);
-      }
+  Color _borderColor(MapFeature feature) {
+    if (feature.isSectionMarker) {
       return isDark ? const Color(0xFFFF8A50) : const Color(0xFFE64A19);
     }
-    return isDark ? const Color(0xFF4A4A4A) : const Color(0xFF9E9E9E);
+    if (feature.isBoothSuffixMarker) {
+      return isDark ? const Color(0xFF4A4A4A) : const Color(0xFFBDBDBD);
+    }
+    if (feature.isBooth) {
+      if (boothToCreators?[feature.content]?.isEmpty ?? true) {
+        return isDark ? const Color(0xFF4A4A4A) : const Color(0xFFBDBDBD);
+      }
+      if (isCreatorCustomListMode) return const Color(0xFFFF88CD);
+      return _boothBorderColor(_boothSection(feature.content));
+    }
+    if (feature.isWall) {
+      return isDark ? const Color(0xFF2A2A2A) : const Color(0xFF616161);
+    }
+    return _featureColor(feature);
   }
 
-  TextStyle _getTextStyle(MergedCell cell) {
-    if (cell.isWall) {
-      return const TextStyle(
-        fontSize: 0,
-        color: Colors.transparent,
-        fontFamily: 'Roboto',
-      );
-    } else if (cell.isBooth) {
-      // Check if booth has creators assigned - use location marker styling for empty booths
-      if (boothToCreators?[cell.content]?.isEmpty ?? true) {
-        return TextStyle(
-          fontSize: 18, // Keep booth font size
-          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-          fontFamily: 'Roboto',
-        );
-      }
-      Color textColor = isDark ? const Color(0xFFFFF6E8) : const Color(0xFF191522);
-
-      if (isCreatorCustomListMode) {
-        textColor = Colors.white;
-      }
-
-      return TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: textColor,
-        fontFamily: 'Roboto',
-      );
-    } else if (cell.isLocationMarker && cell.content != 'a' && cell.content != 'b') {
-      return TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: isDark ? const Color(0xFFFFB74D) : const Color(0xFFE65100),
-        fontFamily: 'Roboto',
-      );
-    } else if (cell.isHall) {
-      return TextStyle(
-        fontSize: 24,
-        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-        fontFamily: 'Roboto',
-      );
+  Color _textColor(MapFeature feature) {
+    if (feature.isSectionMarker) {
+      return isDark ? const Color(0xFFFFB74D) : const Color(0xFFE65100);
     }
-    return TextStyle(
-      fontSize: 14,
-      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-      fontFamily: 'Roboto',
+    if (feature.isBoothSuffixMarker) {
+      return isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    }
+    if (feature.isBooth) {
+      if (boothToCreators?[feature.content]?.isEmpty ?? true) {
+        return isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+      }
+      return isCreatorCustomListMode || isDark
+          ? Colors.white
+          : const Color(0xFF191522);
+    }
+    return isDark ? Colors.grey.shade300 : Colors.grey.shade800;
+  }
+
+  void _drawLabel(Canvas canvas, MapFeature feature, Rect rect, Color color) {
+    final text = _displayText(feature);
+    if (text.isEmpty || rect.width < 3 || rect.height < 3) return;
+    final rotated = feature.rotation.abs() == 90;
+    final availableWidth = rotated ? rect.height : rect.width;
+    final availableHeight = rotated ? rect.width : rect.height;
+    final fontSize = _featureLabelFontSize(
+      feature,
+      text,
+      availableWidth,
+      availableHeight,
     );
-  }
-
-  // --- Palette helpers for booth sections ---
-  String _getBoothSection(String content) {
-    final hyphen = content.indexOf('-');
-    if (hyphen > 0) {
-      return content.substring(0, hyphen).toUpperCase();
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: fontSize,
+          height: 1,
+          fontWeight: feature.isBooth || feature.isHighlight
+              ? FontWeight.w700
+              : FontWeight.w500,
+          color: color,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout(maxWidth: availableWidth);
+    canvas.save();
+    canvas.translate(rect.center.dx, rect.center.dy);
+    if (feature.rotation != 0) {
+      canvas.rotate(feature.rotation * math.pi / 180);
     }
-    // Fallback to first letter group
-    return content.isNotEmpty ? content.substring(0, 1).toUpperCase() : 'X';
+    painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
+    canvas.restore();
   }
 
-  // Soft, readable fills per section group (adapts to theme)
+  String _displayText(MapFeature feature) {
+    return feature.displayLabel;
+  }
+
+  Color _featureColor(MapFeature feature) =>
+      _parseHexColor(feature.color) ??
+      (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
+
+  String _boothSection(String id) {
+    final separator = id.indexOf('-');
+    return separator > 0
+        ? id.substring(0, separator).toUpperCase()
+        : 'CORPORATE';
+  }
+
   Color _boothFillColor(String section) {
-    List<Color> lightPalette = const [
+    const light = [
       Color(0xFFFFD9E8),
       Color(0xFFC9F7FC),
       Color(0xFFFFE99A),
@@ -696,7 +498,7 @@ class MapPainter extends CustomPainter {
       Color(0xFFFFE0F1),
       Color(0xFFD8E8FF),
     ];
-    List<Color> darkPalette = const [
+    const dark = [
       Color(0xFF652443),
       Color(0xFF12505A),
       Color(0xFF65531C),
@@ -706,31 +508,13 @@ class MapPainter extends CustomPainter {
       Color(0xFF5E294E),
       Color(0xFF29456B),
     ];
-    final palette = isDark ? darkPalette : lightPalette;
-
-    // Special-case readability in dark mode:
-    // Sections 'O' and 'G' previously mapped to amber/orange which had poor contrast.
-    if (isDark) {
-      if (section == 'O') {
-        return const Color(0xFF553F8E);
-      }
-      if (section == 'G') {
-        return const Color(0xFF17616A);
-      }
-    }
-
-    final idx = section.codeUnitAt(0) % palette.length;
-    return palette[idx];
+    final palette = isDark ? dark : light;
+    final hash = section.codeUnits.fold(0, (sum, value) => sum + value);
+    return palette[hash % palette.length];
   }
 
   Color _boothBorderColor(String section) {
-    // Adjust borders for special dark-mode overrides to keep harmony
-    if (isDark) {
-      if (section == 'O') return const Color(0xFF7E57C2); // deepPurple 400
-      if (section == 'G') return const Color(0xFF26A69A); // teal 400
-    }
-
-    List<Color> palette = const [
+    const colors = [
       Color(0xFFFF3D8D),
       Color(0xFF009FB2),
       Color(0xFFC39200),
@@ -740,281 +524,164 @@ class MapPainter extends CustomPainter {
       Color(0xFFD63A91),
       Color(0xFF3775CC),
     ];
-    final idx = section.codeUnitAt(0) % palette.length;
-    return palette[idx];
+    final hash = section.codeUnits.fold(0, (sum, value) => sum + value);
+    return colors[hash % colors.length];
   }
 
-  // Hall-specific background colors
-  Color _getHallColor(String content) {
-    // Extract hall number from content (e.g., "HALL 7" -> "7")
-    final match = RegExp(r'HALL\s+(\d+)', caseSensitive: false).firstMatch(content);
-    if (match == null) {
-      // Fallback color if parsing fails
-      return isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE0E0E0);
-    }
-    
-    final hallNumber = match.group(1)!;
-    
-    // Define distinct color palettes for each hall
-    switch (hallNumber) {
-      case '7':
-        return isDark 
-            ? const Color(0xFF1A237E) // Deep blue for dark mode
-            : const Color(0xFFE3F2FD); // Light blue for light mode
-      case '8':
-        return isDark 
-            ? const Color(0xFF1B5E20) // Deep green for dark mode
-            : const Color(0xFFE8F5E9); // Light green for light mode
-      case '9':
-        return isDark 
-            ? const Color(0xFF4A148C) // Deep purple for dark mode
-            : const Color(0xFFF3E5F5); // Light purple for light mode
-      default:
-        // Fallback for any other hall numbers
-        return isDark 
-            ? const Color(0xFF424242) // Dark grey for dark mode
-            : const Color(0xFFF5F5F5); // Light grey for light mode
-    }
-  }
-
-  // Hall-specific border colors
-  Color _getHallBorderColor(String content) {
-    // Extract hall number from content (e.g., "HALL 7" -> "7")
-    final match = RegExp(r'HALL\s+(\d+)', caseSensitive: false).firstMatch(content);
-    if (match == null) {
-      // Fallback color if parsing fails
-      return isDark ? const Color(0xFF4A4A4A) : const Color(0xFF9E9E9E);
-    }
-    
-    final hallNumber = match.group(1)!;
-    
-    // Define distinct border colors for each hall (darker than fill for contrast)
-    switch (hallNumber) {
-      case '7':
-        return isDark 
-            ? const Color(0xFF283593) // Darker blue for dark mode
-            : const Color(0xFF1976D2); // Blue for light mode
-      case '8':
-        return isDark 
-            ? const Color(0xFF2E7D32) // Darker green for dark mode
-            : const Color(0xFF388E3C); // Green for light mode
-      case '9':
-        return isDark 
-            ? const Color(0xFF6A1B9A) // Darker purple for dark mode
-            : const Color(0xFF7B1FA2); // Purple for light mode
-      default:
-        // Fallback for any other hall numbers
-        return isDark 
-            ? const Color(0xFF616161) // Dark grey for dark mode
-            : const Color(0xFF9E9E9E); // Light grey for light mode
+  void _drawDashedRect(Canvas canvas, Rect rect, Paint paint) {
+    final path = Path()..addRect(rect);
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(
+          metric.extractPath(distance, math.min(distance + 8, metric.length)),
+          paint,
+        );
+        distance += 13;
+      }
     }
   }
 
   @override
-  bool shouldRepaint(MapPainter oldDelegate) {
-    // Only repaint if cellSize, data, theme, background color, or booth mapping changed
-    final shouldRepaint = oldDelegate.cellSize != cellSize ||
-        oldDelegate.mergedCells != mergedCells ||
-        oldDelegate.isDark != isDark ||
-        oldDelegate.scaffoldBackgroundColor != scaffoldBackgroundColor ||
-        oldDelegate.boothToCreators != boothToCreators ||
-        oldDelegate.isCreatorCustomListMode != isCreatorCustomListMode;
-    return shouldRepaint;
-  }
+  bool shouldRepaint(MapPainter oldDelegate) =>
+      oldDelegate.features != features ||
+      oldDelegate.isDark != isDark ||
+      oldDelegate.backgroundColor != backgroundColor ||
+      oldDelegate.boothToCreators != boothToCreators ||
+      oldDelegate.isCreatorCustomListMode != isCreatorCustomListMode;
 }
 
-// Separate painter for hover overlay - only repaints this layer
 class HoverOverlayPainter extends CustomPainter {
-  final MergedCell? hoveredCell;
-  final double cellSize;
+  final MapFeature? hoveredFeature;
   final bool isDark;
 
-  HoverOverlayPainter({
-    required this.hoveredCell,
-    required this.cellSize,
-    required this.isDark,
-  });
+  const HoverOverlayPainter(
+      {required this.hoveredFeature, required this.isDark});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (hoveredCell == null) return;
-
-    final cell = hoveredCell!;
-    final left = cell.startCol * cellSize;
-    final top = cell.startRow * cellSize;
-    final width = cell.colSpan * cellSize;
-    final height = cell.rowSpan * cellSize;
-
-    final rect = Rect.fromLTWH(left + 0.5, top + 0.5, width - 1, height - 1);
-    
-    // Draw hover fill
-    final fillPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = isDark 
-          ? const Color(0x5926DDF0)
-          : const Color(0x6600C8E0);
-    
+    final feature = hoveredFeature;
+    if (feature == null) return;
+    final rect =
+        Rect.fromLTWH(feature.x, feature.y, feature.width, feature.height);
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(2)),
-      fillPaint,
+      Paint()
+        ..color = isDark ? const Color(0x5926DDF0) : const Color(0x6600C8E0),
     );
-    
-    // Draw hover border
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = isDark 
-          ? const Color(0xFF26DDF0)
-          : const Color(0xFF008DA0)
-      ..strokeWidth = 2.0;
-    
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(2)),
-      borderPaint,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = isDark ? const Color(0xFF26DDF0) : const Color(0xFF008DA0),
     );
   }
 
   @override
-  bool shouldRepaint(HoverOverlayPainter oldDelegate) {
-    return oldDelegate.hoveredCell != hoveredCell || oldDelegate.isDark != isDark;
-  }
+  bool shouldRepaint(HoverOverlayPainter oldDelegate) =>
+      oldDelegate.hoveredFeature != hoveredFeature ||
+      oldDelegate.isDark != isDark;
 }
 
-// Separate painter for selection overlay - only repaints this layer
 class SelectionOverlayPainter extends CustomPainter {
-  final List<MergedCell> selectedCells;
-  final double cellSize;
+  final List<MapFeature> selectedFeatures;
   final bool isDark;
 
-  SelectionOverlayPainter({
-    required this.selectedCells,
-    required this.cellSize,
+  const SelectionOverlayPainter({
+    required this.selectedFeatures,
     required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (selectedCells.isEmpty) return;
-
-    final useRoundedCorners = cellSize >= 20;
-    final cornerRadius = cellSize >= 60
-        ? const Radius.circular(6)
-        : (cellSize >= 40 ? const Radius.circular(4) : const Radius.circular(2));
-    
-    // Scale stroke subtly with zoom for visual consistency
-    final zoomScale = (cellSize / 40.0).clamp(0.8, 2.0);
-    
-    // Only draw text if zoomed in enough
-    final shouldDrawText = cellSize >= 30;
-    
-    for (final cell in selectedCells) {
-      final left = cell.startCol * cellSize;
-      final top = cell.startRow * cellSize;
-      final width = cell.colSpan * cellSize;
-      final height = cell.rowSpan * cellSize;
-
-      final rect = Rect.fromLTWH(left + 0.5, top + 0.5, width - 1, height - 1);
-      
-      // Draw selection fill overlay
-      final fillPaint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = isDark 
-            ? const Color(0xFFFFDC60)
-            : const Color(0xFFFF3D8D);
-      
-      if (useRoundedCorners && !cell.isHall) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, cornerRadius),
-          fillPaint,
-        );
-      } else {
-        canvas.drawRect(rect, fillPaint);
-      }
-      
-      // Draw selection border
-      final borderPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..color = isDark ? const Color(0xFFFF5CA2) : const Color(0xFF191522)
-        ..strokeWidth = 3.0 * zoomScale;
-      
-      if (useRoundedCorners && !cell.isHall) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, cornerRadius),
-          borderPaint,
-        );
-      } else {
-        canvas.drawRect(rect, borderPaint);
-      }
-      
-      // Draw text if zoomed in and cell is large enough
-      if (shouldDrawText && cell.content.isNotEmpty && width > 20 && height > 15) {
-        _drawText(canvas, cell, rect);
-      }
+    for (final feature in selectedFeatures) {
+      final rect =
+          Rect.fromLTWH(feature.x, feature.y, feature.width, feature.height);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(2)),
+        Paint()
+          ..color = isDark ? const Color(0xFFFFDC60) : const Color(0xFFFF3D8D),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(2)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = isDark ? const Color(0xFFFF5CA2) : const Color(0xFF191522),
+      );
+      _drawLabel(canvas, feature, rect);
     }
   }
 
-  String _getDisplayText(MergedCell cell) {
-    if (cell.isBooth) {
-      // Extract just the number from booth IDs (e.g., "O-33a" -> "33")
-      final match = RegExp(r'\d+').firstMatch(cell.content);
-      if (match != null) {
-        return match.group(0)!;
-      }
-    }
-    return cell.content;
-  }
-
-  void _drawText(Canvas canvas, MergedCell cell, Rect rect) {
-    final textStyle = _getTextStyle(cell);
-    final displayText = _getDisplayText(cell);
-    final textSpan = TextSpan(
-      text: displayText,
-      style: textStyle,
+  void _drawLabel(Canvas canvas, MapFeature feature, Rect rect) {
+    final text = feature.displayLabel;
+    if (text.isEmpty) return;
+    final fontSize = _featureLabelFontSize(
+      feature,
+      text,
+      rect.width,
+      rect.height,
     );
-
-    final textPainter = TextPainter(
-      text: textSpan,
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: fontSize,
+          height: 1,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.black : Colors.white,
+        ),
+      ),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
-      maxLines: cell.rowSpan,
-      ellipsis: '...',
-    );
-
-    textPainter.layout(maxWidth: rect.width - 4);
-
-    // Center the text in the rect
-    final xCenter = rect.left + (rect.width - textPainter.width) / 2;
-    final yCenter = rect.top + (rect.height - textPainter.height) / 2;
-
-    textPainter.paint(canvas, Offset(xCenter, yCenter));
-  }
-
-  TextStyle _getTextStyle(MergedCell cell) {
-    if (cell.isBooth) {
-      // When highlighted: dark text on bright/white overlay (dark mode), white text on dark blue (light mode)
-      Color textColor;
-      if (isDark) {
-        textColor = Colors.black; // Dark text on bright overlay
-      } else {
-        textColor = Colors.white; // White text on dark overlay
-      }
-      return TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: textColor,
-        fontFamily: 'Roboto',
-      );
-    }
-    return TextStyle(
-      fontSize: 14,
-      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-      fontFamily: 'Roboto',
+      maxLines: 1,
+    )..layout(maxWidth: rect.width);
+    painter.paint(
+      canvas,
+      Offset(
+        rect.center.dx - painter.width / 2,
+        rect.center.dy - painter.height / 2,
+      ),
     );
   }
 
   @override
-  bool shouldRepaint(SelectionOverlayPainter oldDelegate) {
-    return oldDelegate.selectedCells != selectedCells || oldDelegate.isDark != isDark;
-  }
+  bool shouldRepaint(SelectionOverlayPainter oldDelegate) =>
+      oldDelegate.selectedFeatures != selectedFeatures ||
+      oldDelegate.isDark != isDark;
 }
 
+Color? _parseHexColor(String? value) {
+  if (value == null) return null;
+  final normalized = value.trim().replaceFirst('#', '');
+  if (normalized.length != 6 && normalized.length != 8) return null;
+  final parsed = int.tryParse(normalized, radix: 16);
+  if (parsed == null) return null;
+  return Color(normalized.length == 6 ? 0xFF000000 | parsed : parsed);
+}
 
+double _featureLabelFontSize(
+  MapFeature feature,
+  String text,
+  double availableWidth,
+  double availableHeight,
+) {
+  final isCorporateBooth = feature.isBooth && !feature.content.contains('-');
+  final heightFactor = feature.isText
+      ? 0.52
+      : isCorporateBooth
+          ? 0.30
+          : 0.42;
+  final characterWidth = isCorporateBooth ? 0.70 : 0.58;
+  return math
+      .max(
+        3,
+        math.min(
+          availableHeight * heightFactor,
+          availableWidth / math.max(1.0, text.length * characterWidth),
+        ),
+      )
+      .toDouble();
+}
