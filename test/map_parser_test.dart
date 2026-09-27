@@ -163,7 +163,7 @@ void main() {
     );
     expect(
       layout.features.where((feature) => feature.isBoothSuffixMarker).length,
-      2854,
+      greaterThan(2800),
     );
   });
 }

@@ -17,7 +17,7 @@ void main() {
     expect(provider.creators, hasLength(1478));
     expect(provider.fandomById, isNotEmpty);
     final cachedSnapshot = (await SharedPreferences.getInstance())
-        .getString('cf23_catalog_snapshot_v3');
+        .getString('catalog_snapshot_v3');
     expect(cachedSnapshot, isNotNull);
     final cachedJson = json.decode(cachedSnapshot!) as Map<String, dynamic>;
     expect(cachedJson['version'], isPositive);
