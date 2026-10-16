@@ -36,6 +36,17 @@ jobs:
 
       - name: Validate generated booth proximity data
         run: python tools/generate_booth_proximity.py --check
+
+      - name: Validate bundled analytics archive
+        run: node tools/archive_bundled_catalog.mjs --check
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Verify analytics browser storage
+        env:
+          CHROME_EXECUTABLE: /usr/bin/google-chrome
+        run: flutter test --platform chrome test/analytics_store_browser_test.dart
       
       - name: Build web
         env:

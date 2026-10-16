@@ -1,5 +1,4 @@
 import 'package:cf_map_flutter/models/creator.dart';
-import 'package:cf_map_flutter/services/analytics_service.dart';
 import 'package:cf_map_flutter/services/favorites_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -34,18 +33,6 @@ class FavoriteButton extends StatelessWidget {
       ),
       tooltip: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
       onPressed: () async {
-        umami.trackEvent(
-          name: 'creator_favorite_tapped',
-          data: {
-            'creator_id': creator.id.toString(),
-            'creator_name': creator.name,
-            'favorited': (!isFavorite).toString(),
-            'favorite_count': (context.read<FavoritesService>().favoriteCount +
-                    (isFavorite ? -1 : 1))
-                .toString(),
-          },
-        );
-
         if (creator.id == -1) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

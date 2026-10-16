@@ -6,6 +6,7 @@ import '../models/creator.dart';
 import '../utils/int_encoding.dart';
 import '../utils/url_encoding.dart';
 import 'creator_data_service.dart';
+import 'analytics_service.dart';
 
 class FavoritesService extends ChangeNotifier {
   static const String _favoritesIdsKey = 'favorite_creator_ids';
@@ -20,7 +21,8 @@ class FavoritesService extends ChangeNotifier {
 
   CreatorDataProvider creatorDataProvider;
 
-  FavoritesService(this.creatorDataProvider);
+  FavoritesService(this.creatorDataProvider, {this.analytics});
+  final AnalyticsService? analytics;
 
   List<Creator> get favorites {
     final favoriteCreators = <Creator>[];
@@ -36,8 +38,14 @@ class FavoritesService extends ChangeNotifier {
   }
 
   // Synchronous methods for fast access
-  void addFavorite(int creatorId) {
+  void addFavorite(int creatorId, {String? operationId}) {
+    if (creatorId < 0 ||
+        creatorDataProvider.getCreatorById(creatorId) == null) {
+      return;
+    }
     if (_favoriteIds.add(creatorId)) {
+      analytics?.bookmark(creatorId, true,
+          bulk: operationId != null, operationId: operationId);
       notifyListeners();
       _scheduleStorageUpdate();
     }
@@ -45,6 +53,7 @@ class FavoritesService extends ChangeNotifier {
 
   void removeFavorite(int creatorId) {
     if (_favoriteIds.remove(creatorId)) {
+      analytics?.bookmark(creatorId, false);
       notifyListeners();
       _scheduleStorageUpdate();
     }
@@ -52,6 +61,33 @@ class FavoritesService extends ChangeNotifier {
 
   bool isFavorited(int creatorId) {
     return _favoriteIds.contains(creatorId);
+  }
+
+  ({int added, int skipped, int failed}) addAllFavorites(
+      Iterable<int> creatorIds) {
+    final ids = creatorIds.toList();
+    final operationId = analyticsId();
+    var added = 0, skipped = 0, failed = 0;
+    for (final id in ids) {
+      if (id < 0 || creatorDataProvider.getCreatorById(id) == null) {
+        failed++;
+        continue;
+      }
+      if (isFavorited(id)) {
+        skipped++;
+        continue;
+      }
+      addFavorite(id, operationId: operationId);
+      added++;
+    }
+    analytics?.favorites(FavoritesAction.bulkAdd,
+        success: failed == 0,
+        operationId: operationId,
+        requested: ids.length,
+        added: added,
+        skipped: skipped,
+        failed: failed);
+    return (added: added, skipped: skipped, failed: failed);
   }
 
   String get favoriteIdsCode {
@@ -88,12 +124,16 @@ class FavoritesService extends ChangeNotifier {
   // Asynchronous storage update
   Future<void> _updateStorage() async {
     await _initPrefs();
-    if (_prefs == null) return;
+    if (_prefs == null) {
+      analytics?.failure(Operation.favoritesPersistence, FailureCode.storage);
+      return;
+    }
 
     try {
       await _prefs!.setStringList(
           _favoritesIdsKey, _favoriteIds.map((id) => id.toString()).toList());
     } catch (e) {
+      analytics?.failure(Operation.favoritesPersistence, FailureCode.storage);
       if (kDebugMode) {
         print('Failed to save favorite IDs: $e');
       }

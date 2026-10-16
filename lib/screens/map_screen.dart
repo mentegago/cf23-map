@@ -1,16 +1,17 @@
+import '../services/deep_link_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cf_map_flutter/services/analytics_service.dart';
 import '../services/map_parser.dart';
 import '../services/creator_data_service.dart';
-import '../utils/int_encoding.dart';
 import '../utils/browser_navigation.dart';
 import '../widgets/mobile/creator_selector_sheet.dart';
 import '../models/map_cell.dart';
 import '../models/creator.dart';
 import '../models/recommendation.dart';
 import '../services/recommendation_service.dart';
+import '../services/search_tracking_controller.dart';
 import 'map_screen_desktop.dart';
 import 'map_screen_mobile.dart';
 import 'dart:async';
@@ -23,6 +24,7 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  final _startup = Stopwatch()..start();
   MapLayout? _mapLayout;
   bool _isLoading = true;
   String? _error;
@@ -38,6 +40,7 @@ class _MapScreenState extends State<MapScreen> {
       final startTime = DateTime.now();
 
       final layout = await MapParser.loadMapLayout();
+      if (!mounted) return;
 
       print(
           'Map data loaded in ${DateTime.now().difference(startTime).inMilliseconds}ms');
@@ -51,6 +54,10 @@ class _MapScreenState extends State<MapScreen> {
       // Handle query parameter if booth is specified in URL
       _handleQueryParameters();
     } catch (e) {
+      if (!mounted) return;
+      context
+          .read<AnalyticsService>()
+          .failure(Operation.mapLoad, FailureCode.unavailable);
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -67,17 +74,28 @@ class _MapScreenState extends State<MapScreen> {
             searchQuery: searchQuery,
           ),
         );
-    umami.trackEvent(
-      name: 'creator_selected',
-      data: {
-        'creator_id': creator.id.toString(),
-        'creator_name': creator.name,
-        'source': source,
-        'search_query': searchQuery,
-      },
-    );
+
     final creatorProvider = context.read<CreatorDataProvider>();
-    creatorProvider.setSelectedCreator(creator);
+    final tracking = context.read<SearchTrackingController>();
+    final searchId = source == 'list' ? tracking.result(searchQuery) : null;
+    if (source != 'list') tracking.reset();
+    final selection = switch (source) {
+      'map' => SelectionSource.map,
+      'recommendation' => SelectionSource.recommendation,
+      'deeplink' || 'deeplink_search_bar' => SelectionSource.deeplink,
+      _ =>
+        searchId == null ? SelectionSource.list : SelectionSource.searchResult,
+    };
+    final results = searchId == null
+        ? <Creator>[]
+        : creatorProvider.searchCreators(searchQuery);
+    creatorProvider.setSelectedCreator(creator,
+        source: selection,
+        searchId: searchId,
+        position: searchId == null
+            ? null
+            : results.indexWhere((c) => c.id == creator.id) + 1);
+    context.read<AnalyticsService>().searchClosed(reason: 'creator_selected');
     _updateQueryParametersIfNeeded(creator.id);
   }
 
@@ -90,13 +108,17 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _handleBoothTap(String? boothId) {
-    if (boothId == null) return;
+    if (boothId == null) {
+      context.read<AnalyticsService>().boothSelected(0);
+      return;
+    }
 
     final creatorProvider = context.read<CreatorDataProvider>();
     final boothToCreators = creatorProvider.boothToCreators;
     if (boothToCreators == null) return;
 
     final creators = boothToCreators[boothId];
+    context.read<AnalyticsService>().boothSelected(creators?.length ?? 0);
     if (creators == null || creators.isEmpty) return;
 
     if (creators.length == 1) {
@@ -129,119 +151,17 @@ class _MapScreenState extends State<MapScreen> {
 
   void _handleQueryParameters() {
     context.read<CreatorDataProvider>().onCreatorDataServiceInitialized(() {
-      try {
-        final uri = Uri.parse(browserCurrentUrl());
-        final creatorParam = uri.queryParameters['creator'];
-        final creatorIdParam =
-            int.tryParse(uri.queryParameters['creator_id'] ?? '');
-        final compressedCreatorCustomListParam = uri.queryParameters['list'];
-        final creatorCustomListParam = uri.queryParameters['custom_list'];
-        final source = uri.queryParameters['source'];
-
-        final String? deeplinkType = compressedCreatorCustomListParam != null
-            ? 'list'
-            : creatorCustomListParam != null
-                ? 'custom_list'
-                : creatorIdParam != null
-                    ? 'creator_id'
-                    : creatorParam != null && creatorParam.isNotEmpty
-                        ? 'creator'
-                        : null;
-
-        if (deeplinkType != null) {
-          final String deeplinkParam = switch (deeplinkType) {
-            'list' => compressedCreatorCustomListParam!,
-            'custom_list' => creatorCustomListParam!,
-            'creator_id' => creatorIdParam.toString(),
-            _ => creatorParam!,
-          };
-          umami.trackEvent(
-            name: 'deeplink_visit',
-            data: {
-              'type': deeplinkType,
-              'param': deeplinkParam,
-              'source': source,
-            },
-          );
-        }
-
-        if (compressedCreatorCustomListParam != null) {
-          final creatorProvider = context.read<CreatorDataProvider>();
-          final idList =
-              IntEncoding.stringCodeToInts(compressedCreatorCustomListParam);
-
-          if (idList.isNotEmpty) {
-            creatorProvider.setCreatorCustomList(idList);
-          }
-
-          umami.trackEvent(
-            name: 'creator_custom_list',
-            data: {
-              'count': idList.length.toString(),
-              'source': 'deeplink',
-              'param': compressedCreatorCustomListParam,
-            },
-          );
-        }
-
-        if (creatorCustomListParam != null) {
-          final creatorProvider = context.read<CreatorDataProvider>();
-          final idStrings = creatorCustomListParam.split(',');
-          final idList = idStrings
-              .map((idStr) => int.tryParse(idStr.trim()))
-              .where((id) => id != null)
-              .cast<int>()
-              .toList();
-
-          if (idList.isNotEmpty) {
-            creatorProvider.setCreatorCustomList(idList);
-          }
-        }
-
-        if (creatorIdParam != null) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (!mounted) return;
-            final creatorProvider = context.read<CreatorDataProvider>();
-            final creator = creatorProvider.getCreatorById(creatorIdParam);
-            print('creator: ${creator?.name ?? 'null'}');
-            if (creator != null) {
-              _handleCreatorSelected(creator, source: 'deeplink');
-            }
-          });
-        } else if (creatorParam != null && creatorParam.isNotEmpty) {
-          // Decode and normalize name (replace + with space, trim)
-          final searchName =
-              Uri.decodeComponent(creatorParam.replaceAll('+', ' '))
-                  .trim()
-                  .toLowerCase();
-
-          // Small delay to ensure UI is ready
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              final creatorProvider = context.read<CreatorDataProvider>();
-              final creators = creatorProvider.creators;
-              if (creators != null && creators.isNotEmpty) {
-                // Find creator by name (case-insensitive, partial match)
-                final creator = creators.firstWhere(
-                  (c) => c.name.toLowerCase().contains(searchName),
-                  orElse: () => creators.firstWhere(
-                    (c) => c.name.toLowerCase() == searchName,
-                    orElse: () => creators
-                        .first, // fallback, won't be used if null check below
-                  ),
-                );
-
-                // Only select if we found a match
-                if (creator.name.toLowerCase().contains(searchName)) {
-                  _handleCreatorSelected(creator, source: 'deeplink');
-                }
-              }
-            }
-          });
-        }
-      } catch (e) {
-        print('Error parsing query parameters: $e');
-      }
+      if (!mounted) return;
+      final catalog = context.read<CreatorDataProvider>();
+      context
+          .read<AnalyticsService>()
+          .ready(_startup.elapsedMilliseconds, catalog.catalogSource);
+      applyDeepLink(
+          browserCurrentUrl(),
+          context.read<CreatorDataProvider>(),
+          context.read<AnalyticsService>(),
+          (creator) => _handleCreatorSelected(creator, source: 'deeplink'),
+          initial: true);
     });
   }
 

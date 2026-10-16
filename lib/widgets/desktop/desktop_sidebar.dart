@@ -1,9 +1,10 @@
+import '../../services/deep_link_handler.dart';
+import '../../services/search_tracking_controller.dart';
 import 'package:cf_map_flutter/services/analytics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/creator.dart';
 import '../../services/creator_data_service.dart';
-import '../../utils/int_encoding.dart';
 import '../creator_detail_content.dart';
 import '../creator_list_view.dart';
 import '../../design_system/cf_design_system.dart';
@@ -41,7 +42,8 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
 
     _searchFocusNode.addListener(() {
       if (mounted && _searchFocusNode.hasFocus) {
-        umami.trackEvent(name: 'search_bar_opened');
+        context.read<AnalyticsService>().searchOpened();
+        context.read<AnalyticsService>().creatorClosed(reason: 'search_opened');
         setState(() {
           _showSearchList = true;
         });
@@ -71,7 +73,7 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
   }
 
   void _performSearch(String query) {
-    _searchScrollController.jumpTo(0);
+    if (_searchScrollController.hasClients) _searchScrollController.jumpTo(0);
   }
 
   void _handleCreatorSelected(Creator creator) {
@@ -166,16 +168,11 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
                   On search results page, it goes back to creator detail page (if a creator is still selected)
                 */
                 if (!_showSearchList) {
-                  umami.trackEvent(
-                    name: 'desktop_search_bar_back_dismiss_tapped',
-                    data: {
-                      'creator_id': widget.selectedCreator?.id.toString(),
-                      'creator_name': widget.selectedCreator?.name,
-                    },
-                  );
                   widget.onCreatorDismissed?.call();
                 } else {
-                  umami.trackEvent(name: 'search_bar_back_tapped');
+                  context.read<AnalyticsService>().searchClosed(reason: 'back');
+                  context.read<AnalyticsService>().creatorOpened(
+                      widget.selectedCreator!.id, SelectionSource.list);
                   setState(() {
                     _showSearchList = false;
                   });
@@ -197,7 +194,10 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
                 contentPadding:
                     EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               ),
-              onChanged: _performSearch,
+              onChanged: (query) {
+                context.read<SearchTrackingController>().changed(query);
+                _performSearch(query);
+              },
               onSubmitted: _handleSearchSubmitted,
             ),
           ),
@@ -211,14 +211,8 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                       size: 20),
                   onPressed: () {
-                    umami.trackEvent(
-                      name: 'search_bar_clear_tapped',
-                      data: {
-                        'search_query': _searchController.text,
-                        'creator_id': widget.selectedCreator?.id.toString(),
-                        'creator_name': widget.selectedCreator?.name,
-                      },
-                    );
+                    context.read<AnalyticsService>().searchCleared();
+                    context.read<SearchTrackingController>().reset();
                     _searchController.clear();
                     widget.onClear?.call();
                     _performSearch('');
@@ -230,14 +224,8 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                       size: 20),
                   onPressed: () {
-                    umami.trackEvent(
-                      name: 'search_bar_clear_tapped',
-                      data: {
-                        'search_query': '',
-                        'creator_id': widget.selectedCreator?.id.toString(),
-                        'creator_name': widget.selectedCreator?.name,
-                      },
-                    );
+                    context.read<AnalyticsService>().searchCleared();
+                    context.read<SearchTrackingController>().reset();
                     widget.onClear?.call();
                   },
                 );
@@ -264,6 +252,7 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
           homeVisible: widget.selectedCreator == null || _showSearchList,
           onShouldHideListScreen: () {},
           onClearSearch: () {
+            context.read<SearchTrackingController>().reset();
             _searchController.clear();
             _performSearch('');
           },
@@ -294,6 +283,7 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
   }
 
   void _handleRequestSearch(String query) {
+    context.read<AnalyticsService>().creatorClosed(reason: 'search_opened');
     setState(() {
       _searchController.text = query;
       _showSearchList = true;
@@ -303,204 +293,17 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
   }
 
   void _handleSearchSubmitted(String text) {
-    // Router function - delegates to specific handlers based on URL pattern
-    if (text.contains('?list=')) {
-      _handleListUrl(text);
-    } else if (text.contains('?creator_id=')) {
-      _handleCreatorIdUrl(text);
-    } else if (text.contains('?creator=')) {
-      _handleCreatorUrl(text);
-    } else if (text.contains('?custom_list=')) {
-      _handleCustomListUrl(text);
-    }
-  }
-
-  void _handleListUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the list query parameter
-      final listParam = uri.queryParameters['list'];
-      if (listParam == null || listParam.isEmpty) {
-        return; // No list parameter, fail silently
-      }
-
-      // Decode the compressed list
-      final idList = IntEncoding.stringCodeToInts(listParam);
-      if (idList.isEmpty) {
-        return; // Empty or invalid list, fail silently
-      }
-
-      // Set creator custom list with specified flags
-      final creatorProvider = context.read<CreatorDataProvider>();
-      creatorProvider.setCreatorCustomList(
-        idList,
-        showAddAllToFavorites: true,
-        shouldRefreshOnReturn: false,
-      );
-
-      // Clear search controller only on success
+    final tracking = context.read<SearchTrackingController>();
+    tracking.submit(text);
+    final handled = applyDeepLink(
+        text,
+        context.read<CreatorDataProvider>(),
+        context.read<AnalyticsService>(),
+        (creator) => widget.onCreatorSelected(creator, source: 'deeplink'));
+    if (handled) {
+      tracking.reset();
       _searchController.clear();
       _performSearch('');
-    } catch (e) {
-      // Fail silently on any error
-      return;
-    }
-  }
-
-  void _handleCreatorIdUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the creator_id query parameter
-      final creatorIdParam = uri.queryParameters['creator_id'];
-      if (creatorIdParam == null || creatorIdParam.isEmpty) {
-        return; // No creator_id parameter, fail silently
-      }
-
-      // Parse creator ID
-      final creatorId = int.tryParse(creatorIdParam);
-      if (creatorId == null) {
-        return; // Invalid creator ID, fail silently
-      }
-
-      // Get creator by ID
-      final creatorProvider = context.read<CreatorDataProvider>();
-      final creator = creatorProvider.getCreatorById(creatorId);
-      if (creator == null) {
-        return; // Creator not found, fail silently
-      }
-
-      // Select the creator
-      widget.onCreatorSelected(creator, source: 'deeplink_search_bar');
-
-      // Clear search controller only on success
-      _searchController.clear();
-      _performSearch('');
-    } catch (e) {
-      // Fail silently on any error
-      return;
-    }
-  }
-
-  void _handleCreatorUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the creator query parameter
-      final creatorParam = uri.queryParameters['creator'];
-      if (creatorParam == null || creatorParam.isEmpty) {
-        return; // No creator parameter, fail silently
-      }
-
-      // Decode and normalize name (replace + with space, trim)
-      final searchName = Uri.decodeComponent(creatorParam.replaceAll('+', ' '))
-          .trim()
-          .toLowerCase();
-      if (searchName.isEmpty) {
-        return; // Empty search name, fail silently
-      }
-
-      // Get all creators from provider
-      final creatorProvider = context.read<CreatorDataProvider>();
-      final creators = creatorProvider.creators;
-      if (creators == null || creators.isEmpty) {
-        return; // No creators available, fail silently
-      }
-
-      // Find creator by name (case-insensitive, partial match)
-      Creator? creator;
-      try {
-        creator = creators.firstWhere(
-          (c) => c.name.toLowerCase().contains(searchName),
-          orElse: () => creators.firstWhere(
-            (c) => c.name.toLowerCase() == searchName,
-            orElse: () =>
-                creators.first, // fallback, won't be used if null check below
-          ),
-        );
-
-        // Only select if we found a match
-        if (!creator.name.toLowerCase().contains(searchName)) {
-          return; // No match found, fail silently
-        }
-      } catch (e) {
-        return; // No match found, fail silently
-      }
-
-      // Select the creator
-      widget.onCreatorSelected(creator, source: 'deeplink_search_bar');
-
-      // Clear search controller only on success
-      _searchController.clear();
-      _performSearch('');
-    } catch (e) {
-      // Fail silently on any error
-      return;
-    }
-  }
-
-  void _handleCustomListUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the custom_list query parameter
-      final customListParam = uri.queryParameters['custom_list'];
-      if (customListParam == null || customListParam.isEmpty) {
-        return; // No custom_list parameter, fail silently
-      }
-
-      // Parse comma-separated creator IDs
-      final idStrings = customListParam.split(',');
-      final idList = idStrings
-          .map((idStr) => int.tryParse(idStr.trim()))
-          .where((id) => id != null)
-          .cast<int>()
-          .toList();
-
-      if (idList.isEmpty) {
-        return; // Empty or invalid list, fail silently
-      }
-
-      // Set creator custom list with specified flags
-      final creatorProvider = context.read<CreatorDataProvider>();
-      creatorProvider.setCreatorCustomList(
-        idList,
-        showAddAllToFavorites: true,
-        shouldRefreshOnReturn: false,
-      );
-
-      umami.trackEvent(
-        name: 'creator_custom_list',
-        data: {
-          'count': idList.length.toString(),
-          'source': 'deeplink_search_bar',
-          'text': text,
-        },
-      );
-
-      // Clear search controller only on success
-      _searchController.clear();
-      _performSearch('');
-    } catch (e) {
-      // Fail silently on any error
-      return;
     }
   }
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+import '../../services/deep_link_handler.dart';
+import '../../services/search_tracking_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +9,6 @@ import '../../services/analytics_service.dart';
 import '../../services/creator_data_service.dart';
 import '../../services/favorites_service.dart';
 import '../../services/recommendation_service.dart';
-import '../../utils/int_encoding.dart';
 import '../creator_list_view.dart';
 import 'mobile_sheet_detent.dart';
 import '../../design_system/cf_design_system.dart';
@@ -40,6 +42,9 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
   MobileSearchSheetDetent _detent = MobileSearchSheetDetent.collapsed;
+  MobileSearchSheetDetent? _reportedDetent;
+  bool _programmatic = false;
+  Timer? _settled;
   double _collapsedExtent = 0.18;
   double _extent = 0.18;
   double _bottomSafeArea = 0;
@@ -59,17 +64,25 @@ class ExpandableSearchState extends State<ExpandableSearch> {
           ? _collapsedExtent
           : MobileSheetDetent.expanded.extent;
 
-  Future<void> animateToDetent(MobileSearchSheetDetent detent) async {
+  Future<void> animateToDetent(MobileSearchSheetDetent detent,
+      {bool user = false}) async {
+    _programmatic = true;
     _detent = detent;
-    if (!_sheetController.isAttached) return;
+    if (!_sheetController.isAttached) {
+      _programmatic = false;
+      return;
+    }
     await _sheetController.animateTo(
       _extentFor(detent),
       duration: mobileSheetAnimationDuration,
       curve: Curves.easeOutCubic,
     );
+    _reportDetent(detent, user: user);
+    _programmatic = false;
   }
 
   void jumpToDetent(MobileSearchSheetDetent detent) {
+    _reportDetent(detent, user: false);
     _detent = detent;
     _extent = _extentFor(detent);
     if (_sheetController.isAttached) {
@@ -79,11 +92,16 @@ class ExpandableSearchState extends State<ExpandableSearch> {
 
   void resizeBehindDetail() {
     if (!_sheetController.isAttached) return;
-    _sheetController.animateTo(
+    _programmatic = true;
+    _sheetController
+        .animateTo(
       MobileSheetDetent.partiallyExpanded.extent,
       duration: mobileSheetAnimationDuration,
       curve: Curves.easeOutCubic,
-    );
+    )
+        .whenComplete(() {
+      _programmatic = false;
+    });
   }
 
   void performSearch(String query) {
@@ -109,7 +127,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
       if (mounted &&
           _focusNode.hasFocus &&
           currentDetent != MobileSearchSheetDetent.expanded) {
-        umami.trackEvent(name: 'search_bar_opened');
+        context.read<AnalyticsService>().searchOpened();
         animateToDetent(MobileSearchSheetDetent.expanded);
       }
     });
@@ -150,6 +168,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
 
   @override
   void dispose() {
+    _settled?.cancel();
     _searchController.dispose();
     _focusNode.dispose();
     _sheetController
@@ -162,6 +181,11 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     if (!mounted || !_sheetController.isAttached) return;
     final extent = _sheetController.size;
     final detent = currentDetent;
+    _settled?.cancel();
+    final user = !_programmatic;
+    _settled = Timer(const Duration(milliseconds: 180), () {
+      if (mounted) _reportDetent(currentDetent, user: user);
+    });
     if ((_extent - extent).abs() > 0.001 || _detent != detent) {
       setState(() {
         _extent = extent;
@@ -176,7 +200,17 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     }
   }
 
+  void _reportDetent(MobileSearchSheetDetent detent, {required bool user}) {
+    if (_reportedDetent == detent) return;
+    _reportedDetent = detent;
+    context.read<AnalyticsService>().sheetState(detent.name, user: user);
+    if (detent == MobileSearchSheetDetent.collapsed) {
+      context.read<AnalyticsService>().searchClosed();
+    }
+  }
+
   void _collapse() {
+    context.read<AnalyticsService>().searchClosed();
     _focusNode.unfocus();
     animateToDetent(MobileSearchSheetDetent.collapsed);
   }
@@ -196,14 +230,8 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   }
 
   void _handleClear() {
-    umami.trackEvent(
-      name: 'search_bar_clear_tapped',
-      data: {
-        'search_query': _searchController.text,
-        'creator_id': widget.selectedCreator?.id.toString(),
-        'creator_name': widget.selectedCreator?.name,
-      },
-    );
+    context.read<AnalyticsService>().searchCleared();
+    context.read<SearchTrackingController>().reset();
     setState(() {
       _searchController.clear();
     });
@@ -212,203 +240,17 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   }
 
   void _handleSearchSubmitted(String text) {
-    // Router function - delegates to specific handlers based on URL pattern
-    if (text.contains('?list=')) {
-      _handleListUrl(text);
-    } else if (text.contains('?creator_id=')) {
-      _handleCreatorIdUrl(text);
-    } else if (text.contains('?creator=')) {
-      _handleCreatorUrl(text);
-    } else if (text.contains('?custom_list=')) {
-      _handleCustomListUrl(text);
-    }
-  }
-
-  void _handleListUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the list query parameter
-      final listParam = uri.queryParameters['list'];
-      if (listParam == null || listParam.isEmpty) {
-        return; // No list parameter, fail silently
-      }
-
-      // Decode the compressed list
-      final idList = IntEncoding.stringCodeToInts(listParam);
-      if (idList.isEmpty) {
-        return; // Empty or invalid list, fail silently
-      }
-
-      // Set creator custom list with specified flags
-      final creatorProvider = context.read<CreatorDataProvider>();
-      creatorProvider.setCreatorCustomList(
-        idList,
-        showAddAllToFavorites: true,
-        shouldRefreshOnReturn: false,
-      );
-
-      // Clear search controller only on success
-      setState(() {
-        _searchController.clear();
-      });
+    final tracking = context.read<SearchTrackingController>();
+    tracking.submit(text);
+    final handled = applyDeepLink(
+        text,
+        context.read<CreatorDataProvider>(),
+        context.read<AnalyticsService>(),
+        (creator) => widget.onCreatorSelected(creator, source: 'deeplink'));
+    if (handled) {
+      tracking.reset();
+      setState(() => _searchController.clear());
       _collapse();
-    } catch (e) {
-      // Fail silently on any error
-      return;
-    }
-  }
-
-  void _handleCreatorIdUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the creator_id query parameter
-      final creatorIdParam = uri.queryParameters['creator_id'];
-      if (creatorIdParam == null || creatorIdParam.isEmpty) {
-        return; // No creator_id parameter, fail silently
-      }
-
-      // Parse creator ID
-      final creatorId = int.tryParse(creatorIdParam);
-      if (creatorId == null) {
-        return; // Invalid creator ID, fail silently
-      }
-
-      // Get creator by ID
-      final creatorProvider = context.read<CreatorDataProvider>();
-      final creator = creatorProvider.getCreatorById(creatorId);
-      if (creator == null) {
-        return; // Creator not found, fail silently
-      }
-
-      // Select the creator
-      widget.onCreatorSelected(creator, source: 'deeplink');
-
-      // Clear search controller only on success
-      setState(() {
-        _searchController.clear();
-      });
-      _collapse();
-    } catch (e) {
-      // Fail silently on any error
-      return;
-    }
-  }
-
-  void _handleCreatorUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the creator query parameter
-      final creatorParam = uri.queryParameters['creator'];
-      if (creatorParam == null || creatorParam.isEmpty) {
-        return; // No creator parameter, fail silently
-      }
-
-      // Decode and normalize name (replace + with space, trim)
-      final searchName = Uri.decodeComponent(creatorParam.replaceAll('+', ' '))
-          .trim()
-          .toLowerCase();
-      if (searchName.isEmpty) {
-        return; // Empty search name, fail silently
-      }
-
-      // Get all creators from provider
-      final creatorProvider = context.read<CreatorDataProvider>();
-      final creators = creatorProvider.creators;
-      if (creators == null || creators.isEmpty) {
-        return; // No creators available, fail silently
-      }
-
-      // Find creator by name (case-insensitive, partial match)
-      Creator? creator;
-      try {
-        creator = creators.firstWhere(
-          (c) => c.name.toLowerCase().contains(searchName),
-          orElse: () => creators.firstWhere(
-            (c) => c.name.toLowerCase() == searchName,
-            orElse: () =>
-                creators.first, // fallback, won't be used if null check below
-          ),
-        );
-
-        // Only select if we found a match
-        if (!creator.name.toLowerCase().contains(searchName)) {
-          return; // No match found, fail silently
-        }
-      } catch (e) {
-        return; // No match found, fail silently
-      }
-
-      // Select the creator
-      widget.onCreatorSelected(creator, source: 'deeplink');
-
-      // Clear search controller only on success
-      setState(() {
-        _searchController.clear();
-      });
-      _collapse();
-    } catch (e) {
-      // Fail silently on any error
-      return;
-    }
-  }
-
-  void _handleCustomListUrl(String text) {
-    try {
-      // Parse the URL
-      final uri = Uri.tryParse(text);
-      if (uri == null) {
-        return; // Invalid URL, fail silently
-      }
-
-      // Extract the custom_list query parameter
-      final customListParam = uri.queryParameters['custom_list'];
-      if (customListParam == null || customListParam.isEmpty) {
-        return; // No custom_list parameter, fail silently
-      }
-
-      // Parse comma-separated creator IDs
-      final idStrings = customListParam.split(',');
-      final idList = idStrings
-          .map((idStr) => int.tryParse(idStr.trim()))
-          .where((id) => id != null)
-          .cast<int>()
-          .toList();
-
-      if (idList.isEmpty) {
-        return; // Empty or invalid list, fail silently
-      }
-
-      // Set creator custom list with specified flags
-      final creatorProvider = context.read<CreatorDataProvider>();
-      creatorProvider.setCreatorCustomList(
-        idList,
-        showAddAllToFavorites: true,
-        shouldRefreshOnReturn: false,
-      );
-
-      // Clear search controller only on success
-      setState(() {
-        _searchController.clear();
-      });
-      _collapse();
-    } catch (e) {
-      // Fail silently on any error
-      return;
     }
   }
 
@@ -483,6 +325,9 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                               scrollController: sheetScrollController,
                               onShouldHideListScreen: _collapse,
                               onClearSearch: () {
+                                context
+                                    .read<SearchTrackingController>()
+                                    .reset();
                                 _searchController.clear();
                                 _performSearch('');
                               },
@@ -548,7 +393,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
               : MobileSearchSheetDetent.expanded;
         }
         _dragStartExtent = null;
-        animateToDetent(target);
+        animateToDetent(target, user: true);
       },
       child: Column(
         children: [
@@ -584,7 +429,10 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
-                    onChanged: _performSearch,
+                    onChanged: (query) {
+                      context.read<SearchTrackingController>().changed(query);
+                      _performSearch(query);
+                    },
                     onSubmitted: _handleSearchSubmitted,
                   ),
                 ),
@@ -631,15 +479,11 @@ class ExpandableSearchState extends State<ExpandableSearch> {
                           final fandomId = context
                               .read<CreatorDataProvider>()
                               .fandomIdForName(fandom);
-                          umami.trackEvent(
-                            name: 'fandom_tapped',
-                            data: {
-                              'source': 'search_suggestion',
-                              'fandom': fandom,
-                              if (fandomId != null)
-                                'fandom_id': fandomId.toString(),
-                            },
-                          );
+                          if (fandomId != null) {
+                            context
+                                .read<SearchTrackingController>()
+                                .select(fandomId, SearchSource.suggestion);
+                          }
                           if (fandomId != null) {
                             context
                                 .read<RecommendationService>()

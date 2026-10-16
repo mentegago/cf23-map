@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../services/analytics_actions.dart';
 
 import '../services/analytics_service.dart';
 import '../services/creator_data_service.dart';
@@ -47,14 +47,6 @@ class FABButton extends StatelessWidget {
                 creator,
                 CreatorSelectionSource.randomButton,
               );
-          umami.trackEvent(
-            name: 'creator_selected',
-            data: {
-              'creator_id': creator.id.toString(),
-              'creator_name': creator.name,
-              'source': 'surprise_fab',
-            },
-          );
         }
       },
     );
@@ -68,8 +60,8 @@ class FABButton extends StatelessWidget {
         padding: const EdgeInsets.all(11),
         accent: context.cf.pink,
         onTap: () {
-          umami.trackEvent(name: 'github_tapped');
-          _launchGitHubUrl();
+          launchForAnalytics(Uri.parse('https://github.com/mentegago/cf23-map'),
+              context.read<AnalyticsService>(), CreatorAction.sourceCode);
         },
         child: SvgPicture.asset(
           githubIcon,
@@ -78,12 +70,5 @@ class FABButton extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _launchGitHubUrl() async {
-    final url = Uri.parse('https://github.com/mentegago/cf23-map');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
   }
 }

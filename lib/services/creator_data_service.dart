@@ -12,6 +12,7 @@ import '../utils/browser_navigation.dart';
 import 'catalog_snapshot_cache.dart';
 import 'creator_catalog_index.dart';
 import 'version_service.dart';
+import 'analytics_service.dart';
 
 enum CreatorDataStatus { idle, loading, updating, updated, error }
 
@@ -25,9 +26,17 @@ class CreatorDataProvider extends ChangeNotifier {
   final CatalogSnapshotCache _snapshotCache;
 
   CreatorDataProvider({
+    this.analytics,
     this.enableRemoteUpdates = true,
     CatalogSnapshotCache? snapshotCache,
   }) : _snapshotCache = snapshotCache ?? CatalogSnapshotCache();
+  final AnalyticsService? analytics;
+  String catalogSource = 'bundled';
+  ListScope analyticsScope = ListScope.fullCatalog;
+  ListScope analyticsOriginScope = ListScope.fullCatalog;
+  List<Creator> get allCreators => _allCreators ?? const [];
+  List<Creator> searchAllCreators(String query) =>
+      _fullIndex?.search(query) ?? const [];
 
   List<Creator>? _allCreators;
   Map<int, Fandom> _fandomById = const {};
@@ -66,7 +75,23 @@ class CreatorDataProvider extends ChangeNotifier {
     if (!_isLoading) callback();
   }
 
-  void setSelectedCreator(Creator? creator) {
+  void setSelectedCreator(Creator? creator,
+      {SelectionSource source = SelectionSource.list,
+      String? searchId,
+      int? position}) {
+    if (_selectedCreator?.id == creator?.id) {
+      if (creator != null) {
+        analytics?.creatorOpened(creator.id, source,
+            searchId: searchId, position: position);
+      }
+      return;
+    }
+    if (creator == null) {
+      analytics?.creatorClosed();
+    } else {
+      analytics?.creatorOpened(creator.id, source,
+          searchId: searchId, position: position);
+    }
     _selectedCreator = creator;
     notifyListeners();
   }
@@ -75,7 +100,7 @@ class CreatorDataProvider extends ChangeNotifier {
     final current = creators;
     if (current == null || current.isEmpty) return null;
     final creator = current[Random().nextInt(current.length)];
-    setSelectedCreator(creator);
+    setSelectedCreator(creator, source: SelectionSource.random);
     return creator;
   }
 
@@ -94,9 +119,18 @@ class CreatorDataProvider extends ChangeNotifier {
 
   void setCreatorCustomList(
     List<int> creatorIds, {
+    ListScope scope = ListScope.sharedList,
     bool showAddAllToFavorites = true,
     bool shouldRefreshOnReturn = true,
   }) {
+    if (scope != ListScope.searchResultList) {
+      analyticsOriginScope = scope;
+    } else if (analyticsScope != ListScope.searchResultList) {
+      analyticsOriginScope = analyticsScope;
+    }
+    analyticsScope = scope;
+    analytics?.scopeChanged(scope, creatorIds.length,
+        origin: analyticsOriginScope);
     _customCreatorIds = List.unmodifiable(creatorIds);
     _showAddAllToFavorites = showAddAllToFavorites;
     _shouldRefreshOnReturn = shouldRefreshOnReturn;
@@ -105,6 +139,9 @@ class CreatorDataProvider extends ChangeNotifier {
   }
 
   void clearCreatorCustomList() {
+    analyticsScope = ListScope.fullCatalog;
+    analyticsOriginScope = ListScope.fullCatalog;
+    analytics?.scopeChanged(analyticsScope, _allCreators?.length ?? 0);
     _customCreatorIds = null;
     _customIndex = null;
     _showAddAllToFavorites = true;
@@ -124,12 +161,14 @@ class CreatorDataProvider extends ChangeNotifier {
       final snapshot =
           usableCache ?? await _loadBundledSnapshot(version: bundledVersion);
       _applySnapshot(snapshot);
+      catalogSource = usableCache == null ? 'bundled' : 'cache';
       if (usableCache == null) await _cacheSnapshot(snapshot);
       if (enableRemoteUpdates) _startPeriodicUpdateCheck();
     } catch (error, stackTrace) {
       if (kDebugMode) {
         print('Could not initialize creator catalog: $error\n$stackTrace');
       }
+      analytics?.failure(Operation.catalogLoad, FailureCode.unavailable);
       _setError(error.toString());
     } finally {
       _setLoading(false);
@@ -162,6 +201,7 @@ class CreatorDataProvider extends ChangeNotifier {
       _setStatus(CreatorDataStatus.updated);
     } catch (error) {
       if (kDebugMode) print('Could not update creator catalog: $error');
+      analytics?.failure(Operation.catalogLoad, FailureCode.network);
       _setStatus(CreatorDataStatus.error);
     }
   }
@@ -239,6 +279,7 @@ class CreatorDataProvider extends ChangeNotifier {
     _allCreators = List.unmodifiable(sortedCreators);
     _fandomById = Map.unmodifiable(snapshot.fandomById);
     _currentDataVersion = snapshot.version;
+    analytics?.catalogVersion = snapshot.version;
     _fullIndex = CreatorCatalogIndex.build(_allCreators!, _fandomById);
     _rebuildCustomIndex();
     if (_selectedCreator != null) {

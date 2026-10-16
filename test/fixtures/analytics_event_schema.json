@@ -1,0 +1,1479 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CF23 schema 1 domain event (name and data projection of Umami payload)",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "search_performed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "search_id",
+            "source",
+            "trigger",
+            "resolution",
+            "result_count",
+            "catalog_result_count",
+            "scope"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "search_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "source": {
+              "enum": [
+                "typed",
+                "suggestion",
+                "creator_fandom_chip"
+              ]
+            },
+            "trigger": {
+              "enum": [
+                "settled",
+                "submitted",
+                "selection",
+                "result"
+              ]
+            },
+            "resolution": {
+              "enum": [
+                "canonical",
+                "alias",
+                "explicit_selection",
+                "creator",
+                "booth",
+                "ambiguous",
+                "unresolved"
+              ]
+            },
+            "fandom_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "result_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_result_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scope": {
+              "enum": [
+                "full_catalog",
+                "shared_list",
+                "search_result_list"
+              ]
+            },
+            "origin_scope": {
+              "enum": [
+                "full_catalog",
+                "shared_list",
+                "search_result_list"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "resolution": {
+                    "enum": [
+                      "canonical",
+                      "alias",
+                      "explicit_selection"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "fandom_id"
+                ]
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "fandom_id"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "search_opened"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "search_cleared"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "search_closed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "reason"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "reason": {
+              "enum": [
+                "dismissed",
+                "back",
+                "creator_selected"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "creator_opened"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "creator_id",
+            "source"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "creator_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source": {
+              "enum": [
+                "map",
+                "search_result",
+                "list",
+                "recommendation",
+                "random",
+                "deeplink"
+              ]
+            },
+            "search_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "result_position": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "creator_closed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "creator_id",
+            "reason",
+            "duration_ms"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "creator_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "reason": {
+              "enum": [
+                "dismissed",
+                "replaced",
+                "search_opened"
+              ]
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "bookmark_changed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "creator_id",
+            "action",
+            "source"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "creator_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "action": {
+              "enum": [
+                "add",
+                "remove"
+              ]
+            },
+            "source": {
+              "enum": [
+                "individual",
+                "bulk"
+              ]
+            },
+            "operation_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "map_interacted"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "action"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "action": {
+              "enum": [
+                "pan",
+                "zoom",
+                "both"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "booth_selected"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "count",
+            "outcome"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outcome": {
+              "enum": [
+                "empty",
+                "opened",
+                "chooser"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "list_scope_changed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "scope",
+            "count"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "scope": {
+              "enum": [
+                "full_catalog",
+                "shared_list",
+                "search_result_list"
+              ]
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "origin_scope": {
+              "enum": [
+                "full_catalog",
+                "shared_list",
+                "search_result_list"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "sheet_state_changed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "state",
+            "sheet",
+            "source"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "enum": [
+                "collapsed",
+                "expanded",
+                "partiallyExpanded"
+              ]
+            },
+            "sheet": {
+              "enum": [
+                "search",
+                "detail"
+              ]
+            },
+            "source": {
+              "enum": [
+                "gesture",
+                "programmatic"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "creator_action"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "action",
+            "success"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "action": {
+              "enum": [
+                "external_link",
+                "catalog",
+                "circle_cut",
+                "share",
+                "source_code"
+              ]
+            },
+            "success": {
+              "type": "boolean"
+            },
+            "creator_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "expanded": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "gallery_action"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "action",
+            "creator_id"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "action": {
+              "enum": [
+                "open",
+                "image_changed",
+                "close"
+              ]
+            },
+            "creator_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "favorites_action"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "action",
+            "success"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "action": {
+              "enum": [
+                "share",
+                "copy_booths",
+                "bulk_add"
+              ]
+            },
+            "success": {
+              "type": "boolean"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "operation_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "requested": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "added": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "deeplink_processed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "type",
+            "source",
+            "success",
+            "count"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "type": {
+              "enum": [
+                "list",
+                "custom_list",
+                "creator_id",
+                "creator"
+              ]
+            },
+            "source": {
+              "enum": [
+                "initial",
+                "pasted"
+              ]
+            },
+            "success": {
+              "type": "boolean"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "update_action"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "action"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "action": {
+              "enum": [
+                "shown",
+                "dismissed",
+                "refresh"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "app_ready"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "duration_ms",
+            "source"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source": {
+              "enum": [
+                "bundled",
+                "cache"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "operation_failed"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence",
+            "operation",
+            "code"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operation": {
+              "enum": [
+                "clipboard",
+                "link_launch",
+                "favorites_persistence",
+                "catalog_load",
+                "map_load",
+                "deeplink"
+              ]
+            },
+            "code": {
+              "enum": [
+                "unavailable",
+                "invalid_input",
+                "not_found",
+                "storage",
+                "network",
+                "launch_rejected"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "const": "active_minute"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "event_edition",
+            "app_version",
+            "client_event_id",
+            "occurred_at_ms",
+            "app_run_id",
+            "sequence"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "event_edition": {
+              "const": "comic-frontier-23"
+            },
+            "app_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "catalog_version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "client_event_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "occurred_at_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "app_run_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    }
+  ]
+}

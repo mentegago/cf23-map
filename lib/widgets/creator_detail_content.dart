@@ -1,9 +1,9 @@
+import '../services/analytics_actions.dart';
+import '../services/search_tracking_controller.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cf_map_flutter/widgets/favorite_button.dart';
 import 'package:cf_map_flutter/widgets/sample_works_gallery.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/creator.dart';
 import '../services/analytics_service.dart';
@@ -79,21 +79,15 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                     label: link.title.isNotEmpty ? link.title : link.url,
                     color: context.cf.cyan.withValues(alpha: 0.22),
                     onTap: () {
-                      umami.trackEvent(
-                        name: 'creator_link_tapped',
-                        data: {
-                          'creator_id': widget.creator.id.toString(),
-                          'creator_name': widget.creator.name,
-                          'link_title': link.title,
-                          'link_url': link.url,
-                        },
-                      );
                       context
                           .read<RecommendationService>()
                           .recordExternalLinkOpened(widget.creator);
                       try {
-                        launchUrl(Uri.parse(link.url),
-                            mode: LaunchMode.externalApplication);
+                        launchForAnalytics(
+                            Uri.parse(link.url),
+                            context.read<AnalyticsService>(),
+                            CreatorAction.externalLink,
+                            creatorId: widget.creator.id);
                       } catch (_) {}
                     },
                   ),
@@ -119,16 +113,9 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                   label: fandom.name,
                   color: context.cf.pink.withValues(alpha: 0.2),
                   onTap: () {
-                    umami.trackEvent(
-                      name: 'fandom_tapped',
-                      data: {
-                        'creator_id': widget.creator.id.toString(),
-                        'creator_name': widget.creator.name,
-                        'source': 'creator_detail',
-                        'fandom_id': fandom.id.toString(),
-                        'fandom': fandom.name,
-                      },
-                    );
+                    context
+                        .read<SearchTrackingController>()
+                        .select(fandom.id, SearchSource.creatorFandomChip);
                     context
                         .read<RecommendationService>()
                         .recordFandomInterest(fandom.id);
@@ -217,14 +204,10 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         ? 'Collapse Circle Cut'
                         : 'Expand Circle Cut',
                     onPressed: () {
-                      umami.trackEvent(
-                        name: 'creator_circle_cut_expand_tapped',
-                        data: {
-                          'creator_id': widget.creator.id.toString(),
-                          'creator_name': widget.creator.name,
-                          'expanded': (!isExpanded).toString(),
-                        },
-                      );
+                      context.read<AnalyticsService>().creatorAction(
+                          CreatorAction.circleCut,
+                          creatorId: widget.creator.id,
+                          expanded: !isExpanded);
                       setState(() => isExpanded = !isExpanded);
                     },
                   ),
@@ -271,20 +254,16 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         compact: true,
                         color: context.cf.yellow,
                         onPressed: () {
-                          umami.trackEvent(
-                            name: 'creator_circle_page_link_tapped',
-                            data: {
-                              'creator_id': widget.creator.id.toString(),
-                              'creator_name': widget.creator.name,
-                            },
-                          );
                           context
                               .read<RecommendationService>()
                               .recordExternalLinkOpened(widget.creator);
                           final url =
                               'https://catalog.comifuro.net/circle/${widget.creator.id}';
-                          launchUrl(Uri.parse(url),
-                              mode: LaunchMode.externalApplication);
+                          launchForAnalytics(
+                              Uri.parse(url),
+                              context.read<AnalyticsService>(),
+                              CreatorAction.catalog,
+                              creatorId: widget.creator.id);
                         },
                       ),
                     if (widget.creator.assets.gallery.isNotEmpty)
@@ -297,15 +276,6 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         compact: true,
                         color: context.cf.cyan,
                         onPressed: () {
-                          umami.trackEvent(
-                            name: 'creator_sampleworks_tapped',
-                            data: {
-                              'creator_id': widget.creator.id.toString(),
-                              'creator_name': widget.creator.name,
-                              'count': widget.creator.assets.gallery.length
-                                  .toString(),
-                            },
-                          );
                           showSampleWorksGallery(
                             context: context,
                             imageUrls: widget.creator.assets.gallery,
@@ -380,13 +350,6 @@ class CreatorDetailActions extends StatelessWidget {
                     icon: const Icon(Icons.share),
                     tooltip: 'Share',
                     onPressed: () {
-                      umami.trackEvent(
-                        name: 'creator_share_tapped',
-                        data: {
-                          'creator_id': creator.id.toString(),
-                          'creator_name': creator.name,
-                        },
-                      );
                       onShare();
                     },
                   ),
@@ -407,13 +370,6 @@ class CreatorDetailActions extends StatelessWidget {
               icon: const Icon(Icons.close),
               tooltip: 'Close',
               onPressed: () {
-                umami.trackEvent(
-                  name: 'mobile_creator_detail_dismiss_tapped',
-                  data: {
-                    'creator_id': creator.id.toString(),
-                    'creator_name': creator.name,
-                  },
-                );
                 onClose?.call();
               },
             ),
@@ -440,7 +396,11 @@ Future<void> shareCreator(BuildContext context, Creator creator) async {
   try {
     final shareUrl = UrlEncoding.toUrl({'creator_id': creator.id});
 
-    await Clipboard.setData(ClipboardData(text: shareUrl));
+    final analytics = context.read<AnalyticsService>();
+    final success = await copyForAnalytics(shareUrl, analytics);
+    analytics.creatorAction(CreatorAction.share,
+        creatorId: creator.id, success: success);
+    if (!success) throw StateError('clipboard unavailable');
     if (context.mounted) {
       context.read<RecommendationService>().recordCreatorShared(creator);
     }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/creator.dart';
 import '../models/map_cell.dart';
 import '../services/creator_data_service.dart';
+import '../services/analytics_service.dart';
 
 class MapViewer extends StatefulWidget {
   final MapLayout mapLayout;
@@ -33,6 +34,7 @@ class _MapViewerState extends State<MapViewer>
   double _legacyToMapScale = 1;
   bool _hasBoothScaleReference = false;
   int _animationId = 0;
+  Matrix4? _gestureStart;
 
   bool get _isDesktop => MediaQuery.of(context).size.width > 768;
 
@@ -237,6 +239,20 @@ class _MapViewerState extends State<MapViewer>
     final mediaSize = MediaQuery.of(context).size;
 
     return InteractiveViewer(
+      onInteractionStart: (_) {
+        _animationController.stop();
+        _gestureStart = _transformationController.value.clone();
+      },
+      onInteractionEnd: (_) {
+        final start = _gestureStart;
+        _gestureStart = null;
+        if (start == null) return;
+        final end = _transformationController.value;
+        context.read<AnalyticsService>().mapInteracted(
+            pan: (start.getTranslation() - end.getTranslation()).length > 1,
+            zoom: (start.getMaxScaleOnAxis() - end.getMaxScaleOnAxis()).abs() >
+                .001);
+      },
       transformationController: _transformationController,
       minScale: 0.04,
       maxScale: 8,

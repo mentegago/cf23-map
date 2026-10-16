@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../models/creator.dart';
 import '../services/recommendation_service.dart';
+import '../services/analytics_service.dart';
 
 /// Shows a responsive gallery dialog for sample works images
 Future<void> showSampleWorksGallery({
@@ -14,11 +15,15 @@ Future<void> showSampleWorksGallery({
   required List<String> imageUrls,
   Creator? creator,
   int initialIndex = 0,
-}) {
+}) async {
+  final analytics = context.read<AnalyticsService>();
+  if (creator != null) {
+    analytics.gallery(GalleryAction.open, creator.id, count: imageUrls.length);
+  }
   if (creator != null) {
     context.read<RecommendationService>().recordSampleWorksViewed(creator);
   }
-  return showDialog(
+  await showDialog<void>(
     context: context,
     barrierColor: Colors.black87,
     builder: (context) => Dialog(
@@ -43,6 +48,7 @@ Future<void> showSampleWorksGallery({
                 maxHeight: isWideScreen ? 900 : double.infinity,
               ),
               child: SampleWorksGallery(
+                creatorId: creator?.id,
                 imageUrls: imageUrls,
                 initialIndex: initialIndex,
               ),
@@ -52,16 +58,19 @@ Future<void> showSampleWorksGallery({
       ),
     ),
   );
+  if (creator != null) analytics.gallery(GalleryAction.close, creator.id);
 }
 
 class SampleWorksGallery extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
+  final int? creatorId;
 
   const SampleWorksGallery({
     super.key,
     required this.imageUrls,
     this.initialIndex = 0,
+    this.creatorId,
   });
 
   @override
@@ -110,6 +119,12 @@ class _SampleWorksGalleryState extends State<SampleWorksGallery> {
   }
 
   void _onPageChanged(int index) {
+    if (index == _currentIndex) return;
+    if (widget.creatorId != null) {
+      context
+          .read<AnalyticsService>()
+          .gallery(GalleryAction.imageChanged, widget.creatorId!, index: index);
+    }
     setState(() {
       _currentIndex = index;
     });

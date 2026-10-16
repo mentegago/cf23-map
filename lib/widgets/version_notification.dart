@@ -1,3 +1,4 @@
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
 import '../services/version_service.dart';
@@ -28,7 +29,7 @@ class _VersionNotificationState extends State<VersionNotification>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -36,7 +37,7 @@ class _VersionNotificationState extends State<VersionNotification>
       parent: _animationController,
       curve: Curves.easeOut,
     ));
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1),
       end: Offset.zero,
@@ -44,7 +45,7 @@ class _VersionNotificationState extends State<VersionNotification>
       parent: _animationController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _checkForUpdates();
   }
 
@@ -62,6 +63,7 @@ class _VersionNotificationState extends State<VersionNotification>
           _versionInfo = versionInfo;
           _isVisible = true;
         });
+        context.read<AnalyticsService>().update(UpdateAction.shown);
         _animationController.forward();
       }
     } catch (e) {
@@ -70,7 +72,7 @@ class _VersionNotificationState extends State<VersionNotification>
   }
 
   void _dismiss() {
-    umami.trackEvent(name: 'update_notification_dismissed');
+    context.read<AnalyticsService>().update(UpdateAction.dismissed);
     setState(() {
       _isDismissed = true;
     });
@@ -83,8 +85,9 @@ class _VersionNotificationState extends State<VersionNotification>
     });
   }
 
-  void _refreshPage() {
-    umami.trackEvent(name: 'update_notification_refreshed');
+  Future<void> _refreshPage() async {
+    context.read<AnalyticsService>().update(UpdateAction.refresh);
+    await context.read<AnalyticsService>().flushBeforeReload();
     browserReload();
   }
 
@@ -104,7 +107,7 @@ class _VersionNotificationState extends State<VersionNotification>
         child: SlideTransition(
           position: _slideAnimation,
           child: Container(
-            margin: widget.isDesktop 
+            margin: widget.isDesktop
                 ? const EdgeInsets.all(0)
                 : const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -139,8 +142,8 @@ class _VersionNotificationState extends State<VersionNotification>
                   children: [
                     Text(
                       (_versionInfo?.releaseNotes.isNotEmpty ?? false)
-                        ? _versionInfo!.releaseNotes
-                        : "Please refresh the page to get the latest booth data.",
+                          ? _versionInfo!.releaseNotes
+                          : "Please refresh the page to get the latest booth data.",
                       style: Theme.of(context).textTheme.bodyMedium,
                       softWrap: true,
                     ),
@@ -150,7 +153,10 @@ class _VersionNotificationState extends State<VersionNotification>
                       child: Text(
                         "Pastikan Anda berada di area yang sinyalnya baik sebelum menekan tombol refresh!",
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(200),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withAlpha(200),
                             ),
                       ),
                     ),
@@ -162,9 +168,9 @@ class _VersionNotificationState extends State<VersionNotification>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          onPressed: _dismiss, 
+                          onPressed: _dismiss,
                           child: Text(
-                            'Nanti dulu', 
+                            'Nanti dulu',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w500,
@@ -173,16 +179,18 @@ class _VersionNotificationState extends State<VersionNotification>
                         ),
                         const SizedBox(width: 8),
                         MaterialButton(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          color: Theme.of(context).colorScheme.primary,
-                          onPressed: _refreshPage, 
-                          child: Text('Refresh', style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.w500,
-                          ),)
-                          )
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            color: Theme.of(context).colorScheme.primary,
+                            onPressed: _refreshPage,
+                            child: Text(
+                              'Refresh',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ))
                       ],
                     ),
                   ],

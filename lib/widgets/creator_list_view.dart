@@ -1,9 +1,10 @@
+import '../services/analytics_actions.dart';
+import '../services/search_tracking_controller.dart';
 import 'package:cf_map_flutter/services/creator_data_service.dart';
 import 'package:cf_map_flutter/services/favorites_service.dart';
 import 'package:cf_map_flutter/widgets/creator_tile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/creator.dart';
 import '../models/recommendation.dart';
@@ -484,14 +485,15 @@ class _CreatorListViewState extends State<CreatorListView> {
   }
 }
 
-void _copyBoothCodeList(BuildContext context) {
+Future<void> _copyBoothCodeList(BuildContext context) async {
   final provider = context.read<FavoritesService>();
   final boothList = provider.getBoothCodeList();
-  Clipboard.setData(ClipboardData(text: boothList));
-  umami.trackEvent(
-    name: 'copy_booth_codes_tapped',
-    data: {'count': provider.favorites.length.toString()},
-  );
+  final analytics = context.read<AnalyticsService>();
+  final success = await copyForAnalytics(boothList, analytics);
+  analytics.favorites(FavoritesAction.copyBooths,
+      success: success, count: provider.favoriteCount);
+  if (!success || !context.mounted) return;
+
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       content: Text('Favorites booth codes copied!'),
@@ -500,14 +502,16 @@ void _copyBoothCodeList(BuildContext context) {
   );
 }
 
-void _shareFavorites(BuildContext context, {required String source}) {
+Future<void> _shareFavorites(BuildContext context,
+    {required String source}) async {
   final provider = context.read<FavoritesService>();
   final url = provider.getShareableUrl();
-  umami.trackEvent(
-    name: 'share_favorites_tapped',
-    data: {'count': provider.favorites.length.toString(), 'source': source},
-  );
-  Clipboard.setData(ClipboardData(text: url));
+
+  final analytics = context.read<AnalyticsService>();
+  final success = await copyForAnalytics(url, analytics);
+  analytics.favorites(FavoritesAction.share,
+      success: success, count: provider.favoriteCount);
+  if (!success || !context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       content: Text('Shareable Favorites URL copied!'),
@@ -555,10 +559,13 @@ class _SeeAllCreatorsButton extends StatelessWidget {
               ),
             ),
             onPressed: () {
-              umami.trackEvent(name: 'return_to_full_list_tapped');
               if (kIsWeb &&
                   context.read<CreatorDataProvider>().shouldRefreshOnReturn) {
-                browserAssign('/');
+                context.read<CreatorDataProvider>().clearCreatorCustomList();
+                context
+                    .read<AnalyticsService>()
+                    .flushBeforeReload()
+                    .then((_) => browserAssign('/'));
               } else {
                 context.read<CreatorDataProvider>().clearCreatorCustomList();
                 onShouldHideListScreen();
@@ -588,24 +595,9 @@ class _AddAllToFavoritesButton extends StatelessWidget {
         color: context.cf.pink,
         onPressed: () {
           final favoritesService = context.read<FavoritesService>();
-          final beforeCount = favoritesService.favoriteCount;
-          for (final creator in _filteredCreators) {
-            if (creator.id == -1) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Favorite feature is currently unavailable. We\'ll add this back as soon as we can!',
-                      style: TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.red,
-                  duration: Duration(seconds: 3),
-                ),
-              );
-              return;
-            }
-            favoritesService.addFavorite(creator.id);
-          }
-          final afterCount = favoritesService.favoriteCount;
-          final addedCount = afterCount - beforeCount;
+          final result = favoritesService
+              .addAllFavorites(_filteredCreators.map((c) => c.id));
+          final addedCount = result.added;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(addedCount == 0
@@ -679,14 +671,8 @@ class _SearchResultsHeader extends StatelessWidget {
                 final creatorProvider = context.read<CreatorDataProvider>();
                 final searchResultIds =
                     filteredCreators.map((c) => c.id).toList();
-                umami.trackEvent(
-                  name: 'show_on_map_tapped',
-                  data: {
-                    'source': 'search_results',
-                    'count': searchResultIds.length.toString(),
-                    'search_query': searchQuery,
-                  },
-                );
+                context.read<SearchTrackingController>().submit(searchQuery);
+
                 if (searchResultIds.contains(-1)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -700,7 +686,9 @@ class _SearchResultsHeader extends StatelessWidget {
                   return;
                 }
                 creatorProvider.setCreatorCustomList(searchResultIds,
-                    showAddAllToFavorites: true, shouldRefreshOnReturn: false);
+                    scope: ListScope.searchResultList,
+                    showAddAllToFavorites: true,
+                    shouldRefreshOnReturn: false);
                 onClearSearch?.call();
                 onShouldHideListScreen();
               },
@@ -772,14 +760,11 @@ class _FandomSuggestions extends StatelessWidget {
                   final fandomId = context
                       .read<CreatorDataProvider>()
                       .fandomIdForName(fandom);
-                  umami.trackEvent(
-                    name: 'fandom_tapped',
-                    data: {
-                      'source': 'search_suggestion',
-                      'fandom': fandom,
-                      if (fandomId != null) 'fandom_id': fandomId.toString(),
-                    },
-                  );
+                  if (fandomId != null) {
+                    context
+                        .read<SearchTrackingController>()
+                        .select(fandomId, SearchSource.suggestion);
+                  }
                   onSuggestionSelected?.call(fandom);
                 },
               ),
@@ -821,13 +806,7 @@ class _FavoritesSectionHeader extends StatelessWidget {
               final creatorProvider = context.read<CreatorDataProvider>();
               final favorites = context.read<FavoritesService>().favorites;
               final favoriteIds = favorites.map((c) => c.id).toList();
-              umami.trackEvent(
-                name: 'show_on_map_tapped',
-                data: {
-                  'source': 'favorites',
-                  'count': favoriteIds.length.toString(),
-                },
-              );
+
               creatorProvider.setCreatorCustomList(favoriteIds,
                   showAddAllToFavorites: false, shouldRefreshOnReturn: false);
               onShouldHideListScreen();
