@@ -247,7 +247,8 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    if (widget.creator.id != -1)
+                    if (widget.creator.id != -1 &&
+                        widget.creator.catalogUrl != null)
                       CfActionButton(
                         icon: Icons.open_in_new,
                         label: 'Circle Page',
@@ -257,8 +258,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                           context
                               .read<RecommendationService>()
                               .recordExternalLinkOpened(widget.creator);
-                          final url =
-                              'https://catalog.comifuro.net/circle/${widget.creator.id}';
+                          final url = widget.creator.catalogUrl!;
                           launchForAnalytics(
                               Uri.parse(url),
                               context.read<AnalyticsService>(),
@@ -271,8 +271,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         icon: widget.creator.assets.gallery.length > 1
                             ? Icons.photo_library
                             : Icons.photo,
-                        label:
-                            'Samplework${widget.creator.assets.gallery.length > 1 ? 's' : ''}',
+                        label: 'Images',
                         compact: true,
                         color: context.cf.cyan,
                         onPressed: () {

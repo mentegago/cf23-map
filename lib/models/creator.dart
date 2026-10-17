@@ -41,6 +41,7 @@ class CreatorAssets {
 class Creator {
   final int id;
   final String name;
+  final String? catalogUrl;
   final List<CreatorSpace> spaces;
   final List<String> attendanceDates;
   final Map<String, String> dayLabels;
@@ -55,6 +56,7 @@ class Creator {
   Creator({
     required this.id,
     required this.name,
+    this.catalogUrl,
     required this.spaces,
     required this.attendanceDates,
     this.dayLabels = const {},
@@ -82,6 +84,9 @@ class Creator {
     return Creator(
       id: int.parse(json['id'].toString()),
       name: json['name'].toString(),
+      catalogUrl: json.containsKey('catalogUrl')
+          ? json['catalogUrl'] as String?
+          : 'https://catalog.comifuro.net/circle/${json['id']}',
       spaces: ((json['spaces'] as List?) ?? const [])
           .whereType<Map>()
           .map((space) => CreatorSpace.fromJson(

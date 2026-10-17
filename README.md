@@ -81,6 +81,15 @@ Saat mengembangkan bersama checkout lokal `cf23-data`, gunakan:
 python tools/fetch_creator_data.py --source ../cf23-data/public
 ```
 
+Booth tambahan (corporate, food, dan lainnya) dikelola di repo `cf23-data`
+melalui `data/manual/exhibitors.json` dan `data/manual/overrides.json`.
+Gambar disimpan di `public/images/exhibitors/`. Proses build data menggabungkan
+semuanya ke katalog biasa dengan URL gambar absolut pada domain
+`https://cf23-config.nnt.gg/`; app tidak perlu melakukan merge tambahan.
+Panduan lengkap tersedia di `data/manual/README.md` pada repo tersebut.
+Field `catalogUrl: null` menyembunyikan tombol Circle Page untuk exhibitor
+yang tidak memiliki halaman katalog; record lama tetap memakai URL Comifuro.
+
 ## Kontribusi (Khusus buat developer)
 
 App ini merupakan app eksperimentasi saya, artinya saya bakal ngutak-ngatik terus app ini. Jika ada saran dan ingin contribute sesuatu, mungkin submit Issues dahulu. Kalau sudah oke, silakan submit PR. Mohon maaf atas keterbatasannya 🙇‍♂️
