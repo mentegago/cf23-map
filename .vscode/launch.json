@@ -10,6 +10,16 @@
             "type": "dart"
         },
         {
+            "name": "cf-map-flutter-umami",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--dart-define=UMAMI_WEBSITE_ID=c4e4edfe-be1f-477a-8cbf-702475ab86eb",
+                "--dart-define=UMAMI_ENDPOINT=https://analytics.nnt.gg/api/send",
+                "--dart-define=UMAMI_HOSTNAME=localhost"
+            ]
+        },
+        {
             "name": "cf-map-flutter (profile mode)",
             "request": "launch",
             "type": "dart",
