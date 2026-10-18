@@ -271,7 +271,7 @@ class _CreatorDetailContentState extends State<CreatorDetailContent> {
                         icon: widget.creator.assets.gallery.length > 1
                             ? Icons.photo_library
                             : Icons.photo,
-                        label: 'Images',
+                        label: 'Catalog',
                         compact: true,
                         color: context.cf.cyan,
                         onPressed: () {
