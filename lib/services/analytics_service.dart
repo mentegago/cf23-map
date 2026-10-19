@@ -126,6 +126,27 @@ class AnalyticsService {
   final bool Function() visible;
   final String runId;
   int? catalogVersion;
+  Map<int, String> _creatorNames = const {};
+  Map<int, String> _fandomNames = const {};
+
+  /// Labels come only from the loaded catalog/registry, never from search input.
+  void updateCatalog(int version,
+      {required Map<int, String> creatorNames,
+      required Map<int, String> fandomNames}) {
+    _creatorNames = Map.unmodifiable(creatorNames);
+    _fandomNames = Map.unmodifiable(fandomNames);
+    catalogVersion = version;
+  }
+
+  String? _displayName(Map<int, String> names, Object? id) {
+    final name = id is int ? names[id] : null;
+    if (name == null || name.isEmpty) return null;
+    if (name.length <= 500) return name;
+    // Respect Umami's string limit without splitting a UTF-16 surrogate pair.
+    final last = name.codeUnitAt(499);
+    return name.substring(0, last >= 0xd800 && last <= 0xdbff ? 499 : 500);
+  }
+
   int _sequence = 0;
   int? _activeMinute;
   bool _started = false;
@@ -146,6 +167,8 @@ class AnalyticsService {
   void _emit(AnalyticsEvent event,
       [Map<String, Object> properties = const {}]) {
     if (!enabled) return;
+    final creatorName = _displayName(_creatorNames, properties['creator_id']);
+    final fandomName = _displayName(_fandomNames, properties['fandom_id']);
     final data = <String, Object>{
       'schema_version': 1,
       'event_edition': 'comic-frontier-23',
@@ -156,6 +179,8 @@ class AnalyticsService {
       'app_run_id': runId,
       'sequence': ++_sequence,
       ...properties,
+      if (creatorName != null) 'creator_name': creatorName,
+      if (fandomName != null) 'fandom_name': fandomName,
     };
     sink?.add({
       'type': 'event',

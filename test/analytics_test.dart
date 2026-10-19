@@ -21,6 +21,68 @@ class RecordingAnalyticsSink implements AnalyticsSink {
 
 void main() {
   test(
+      'all creator and fandom events receive catalog display names at emission time',
+      () {
+    final sink = RecordingAnalyticsSink();
+    final a = AnalyticsService(enabled: true, sink: sink)
+      ..updateCatalog(1,
+          creatorNames: {10: 'Circle'}, fandomNames: {1: 'Blue Archive'});
+    a.creatorOpened(10, SelectionSource.map);
+    a.creatorClosed();
+    a.bookmark(10, true);
+    a.bookmark(10, false);
+    a.creatorAction(CreatorAction.share, creatorId: 10);
+    a.gallery(GalleryAction.open, 10);
+    a.search(
+        id: analyticsId(),
+        source: SearchSource.typed,
+        trigger: SearchTrigger.submitted,
+        resolution: SearchResolution.alias,
+        fandomId: 1,
+        results: 0,
+        catalogResults: 0,
+        scope: ListScope.fullCatalog);
+    for (final event in sink.events) {
+      final data = event['payload']['data'] as Map;
+      if (data.containsKey('creator_id')) {
+        expect(data['creator_name'], 'Circle');
+      }
+      if (data.containsKey('fandom_id')) {
+        expect(data['fandom_name'], 'Blue Archive');
+      }
+    }
+    a.updateCatalog(2,
+        creatorNames: {10: 'Renamed Circle'},
+        fandomNames: {1: 'Renamed Fandom'});
+    a.bookmark(10, true);
+    expect((sink.named('bookmark_changed').last['data'] as Map)['creator_name'],
+        'Renamed Circle');
+    expect(
+        (sink.named('bookmark_changed').first['data'] as Map)['creator_name'],
+        'Circle');
+    a.creatorAction(CreatorAction.sourceCode);
+    a.bookmark(99, true);
+    expect(
+        (sink.named('creator_action').last['data'] as Map)
+            .containsKey('creator_name'),
+        false);
+    expect(
+        (sink.named('bookmark_changed').last['data'] as Map)
+            .containsKey('creator_name'),
+        false);
+  });
+  test('display labels respect the backend limit without breaking Unicode', () {
+    final sink = RecordingAnalyticsSink();
+    final name = '${List.filled(499, 'a').join()}😀suffix';
+    final a = AnalyticsService(enabled: true, sink: sink)
+      ..updateCatalog(1, creatorNames: {10: name}, fandomNames: {});
+    a.bookmark(10, true);
+    final label = (sink.named('bookmark_changed').single['data']
+        as Map)['creator_name'] as String;
+    expect(label.length, 499);
+    expect(label, List.filled(499, 'a').join());
+  });
+  test(
       'disabled collection sends nothing; startup sends one canonical pageview',
       () {
     final sink = RecordingAnalyticsSink();

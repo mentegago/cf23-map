@@ -19,6 +19,37 @@ import 'search_tracking_test.dart' show TestCatalog;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+      'loaded catalog automatically supplies creator and fandom display labels',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final sink = RecordingAnalyticsSink();
+    final analytics = AnalyticsService(enabled: true, sink: sink);
+    final catalog =
+        CreatorDataProvider(enableRemoteUpdates: false, analytics: analytics);
+    addTearDown(catalog.dispose);
+    await catalog.initialize();
+    final creator = catalog.allCreators.first;
+    final fandom = catalog.fandomById.values.first;
+    catalog.setSelectedCreator(creator);
+    analytics.search(
+        id: analyticsId(),
+        source: SearchSource.typed,
+        trigger: SearchTrigger.submitted,
+        resolution: SearchResolution.canonical,
+        fandomId: fandom.id,
+        results: 0,
+        catalogResults: 0,
+        scope: ListScope.fullCatalog);
+    expect((sink.named('creator_opened').single['data'] as Map)['creator_name'],
+        creator.name);
+    expect(
+        (sink.named('search_performed').single['data'] as Map)['fandom_name'],
+        fandom.name);
+    expect(
+        (sink.named('creator_opened').single['data'] as Map)['catalog_version'],
+        catalog.currentDataVersion);
+  });
+  test(
       'bookmark membership and bulk summaries exclude restored, duplicate and invalid IDs',
       () async {
     SharedPreferences.setMockInitialValues({
@@ -178,9 +209,8 @@ void main() {
   test(
       'machine contract covers every enum event, has closed fields and required common metadata',
       () {
-    final schema =
-        jsonDecode(File('test/fixtures/analytics_event_schema.json').readAsStringSync())
-            as Map;
+    final schema = jsonDecode(File('test/fixtures/analytics_event_schema.json')
+        .readAsStringSync()) as Map;
     final variants = schema['oneOf'] as List;
     expect(variants.map((v) => v['properties']['name']['const']).toSet(),
         AnalyticsEvent.values.map(analyticsName).toSet());
@@ -198,7 +228,9 @@ void main() {
       'all typed methods produce contract-valid fields, primitive types and enum values',
       () {
     final sink = RecordingAnalyticsSink();
-    final a = AnalyticsService(enabled: true, sink: sink)..catalogVersion = 29;
+    final a = AnalyticsService(enabled: true, sink: sink)
+      ..updateCatalog(29,
+          creatorNames: {10: 'Circle'}, fandomNames: {1: 'Blue Archive'});
     a.searchOpened();
     a.searchCleared();
     a.searchClosed();
@@ -225,9 +257,8 @@ void main() {
     a.update(UpdateAction.shown);
     a.ready(100, 'cache');
     a.failure(Operation.clipboard, FailureCode.unavailable);
-    final schema =
-        jsonDecode(File('test/fixtures/analytics_event_schema.json').readAsStringSync())
-            as Map;
+    final schema = jsonDecode(File('test/fixtures/analytics_event_schema.json')
+        .readAsStringSync()) as Map;
     final variants = schema['oneOf'] as List;
     for (final event in sink.events) {
       final payload = event['payload'] as Map;

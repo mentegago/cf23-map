@@ -279,7 +279,11 @@ class CreatorDataProvider extends ChangeNotifier {
     _allCreators = List.unmodifiable(sortedCreators);
     _fandomById = Map.unmodifiable(snapshot.fandomById);
     _currentDataVersion = snapshot.version;
-    analytics?.catalogVersion = snapshot.version;
+    analytics?.updateCatalog(snapshot.version, creatorNames: {
+      for (final creator in sortedCreators) creator.id: creator.name
+    }, fandomNames: {
+      for (final fandom in _fandomById.values) fandom.id: fandom.name
+    });
     _fullIndex = CreatorCatalogIndex.build(_allCreators!, _fandomById);
     _rebuildCustomIndex();
     if (_selectedCreator != null) {

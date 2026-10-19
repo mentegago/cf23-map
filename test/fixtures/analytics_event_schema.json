@@ -118,6 +118,10 @@
                 "shared_list",
                 "search_result_list"
               ]
+            },
+            "fandom_name": {
+              "type": "string",
+              "maxLength": 500
             }
           },
           "allOf": [
@@ -146,7 +150,12 @@
                 }
               }
             }
-          ]
+          ],
+          "dependentRequired": {
+            "fandom_name": [
+              "fandom_id"
+            ]
+          }
         }
       }
     },
@@ -409,7 +418,16 @@
             "result_position": {
               "type": "integer",
               "minimum": 1
+            },
+            "creator_name": {
+              "type": "string",
+              "maxLength": 500
             }
+          },
+          "dependentRequired": {
+            "creator_name": [
+              "creator_id"
+            ]
           }
         }
       }
@@ -485,7 +503,16 @@
             "duration_ms": {
               "type": "integer",
               "minimum": 0
+            },
+            "creator_name": {
+              "type": "string",
+              "maxLength": 500
             }
+          },
+          "dependentRequired": {
+            "creator_name": [
+              "creator_id"
+            ]
           }
         }
       }
@@ -566,7 +593,16 @@
             "operation_id": {
               "type": "string",
               "pattern": "^[a-f0-9]{32}$"
+            },
+            "creator_name": {
+              "type": "string",
+              "maxLength": 500
             }
+          },
+          "dependentRequired": {
+            "creator_name": [
+              "creator_id"
+            ]
           }
         }
       }
@@ -940,7 +976,16 @@
             },
             "expanded": {
               "type": "boolean"
+            },
+            "creator_name": {
+              "type": "string",
+              "maxLength": 500
             }
+          },
+          "dependentRequired": {
+            "creator_name": [
+              "creator_id"
+            ]
           }
         }
       }
@@ -1019,7 +1064,16 @@
             "count": {
               "type": "integer",
               "minimum": 0
+            },
+            "creator_name": {
+              "type": "string",
+              "maxLength": 500
             }
+          },
+          "dependentRequired": {
+            "creator_name": [
+              "creator_id"
+            ]
           }
         }
       }
