@@ -69,8 +69,12 @@ class _MapViewerState extends State<MapViewer>
   void didUpdateWidget(MapViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.mapLayout, widget.mapLayout)) {
+      // A background update must not move the user's viewport or leave a
+      // hover overlay pointing at a feature from the previous snapshot.
+      _animationId++;
+      _animationController.stop();
+      _hoveredBooth = null;
       _buildSpatialIndex();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _fitMap());
     }
   }
 

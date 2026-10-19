@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cf_map_flutter/services/analytics_service.dart';
-import '../services/map_parser.dart';
+import '../services/map_data_service.dart';
 import '../services/creator_data_service.dart';
 import '../utils/browser_navigation.dart';
 import '../widgets/mobile/creator_selector_sheet.dart';
@@ -17,29 +17,59 @@ import 'map_screen_mobile.dart';
 import 'dart:async';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final MapDataService? mapDataService;
+  const MapScreen({super.key, this.mapDataService});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   final _startup = Stopwatch()..start();
   MapLayout? _mapLayout;
   bool _isLoading = true;
   String? _error;
+  late final MapDataService _mapData;
 
   @override
   void initState() {
     super.initState();
+    _mapData = widget.mapDataService ?? MapDataService();
+    _mapData.addListener(_onMapUpdated);
+    WidgetsBinding.instance.addObserver(this);
     _loadMapData();
+  }
+
+  void _onMapUpdated() {
+    if (!mounted) return;
+    final proximity = _mapData.proximity;
+    if (proximity != null) {
+      context.read<RecommendationService>().updateBoothProximity(proximity);
+    }
+    setState(() => _mapLayout = _mapData.layout);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_mapData.checkForUpdates());
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _mapData.removeListener(_onMapUpdated);
+    if (widget.mapDataService == null) _mapData.dispose();
+    super.dispose();
   }
 
   Future<void> _loadMapData() async {
     try {
       final startTime = DateTime.now();
 
-      final layout = await MapParser.loadMapLayout();
+      await _mapData.initialize();
+      final layout = _mapData.layout!;
       if (!mounted) return;
 
       print(

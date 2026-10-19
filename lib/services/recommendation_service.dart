@@ -53,6 +53,7 @@ class RecommendationService extends ChangeNotifier {
   Timer? _refreshTimer;
   bool _initialized = false;
   bool _disposed = false;
+  BoothProximityData? _liveBoothProximity;
 
   RecommendationService({
     this.disabled = false,
@@ -69,7 +70,8 @@ class RecommendationService extends ChangeNotifier {
     }
     try {
       final boothProximity = await _loadBoothProximity();
-      _engine = RecommendationEngine(boothProximity: boothProximity);
+      _engine = RecommendationEngine(
+          boothProximity: _liveBoothProximity ?? boothProximity);
     } catch (error) {
       if (kDebugMode) {
         print('Could not load booth proximity data: $error');
@@ -83,6 +85,17 @@ class RecommendationService extends ChangeNotifier {
 
   static Future<BoothProximityData> _loadBoothProximity() =>
       _boothProximityLoad ??= _readBoothProximity();
+
+  void updateBoothProximity(BoothProximityData proximity) {
+    _liveBoothProximity = proximity;
+    if (disabled || _engine.boothProximity.mapSha256 == proximity.mapSha256) {
+      return;
+    }
+    _engine = RecommendationEngine(boothProximity: proximity);
+    _savedResult = null;
+    _scheduleRecommendationRefresh();
+    notifyListeners();
+  }
 
   static Future<BoothProximityData> _readBoothProximity() async {
     final raw = await rootBundle.loadString('data/booth-proximity.json');

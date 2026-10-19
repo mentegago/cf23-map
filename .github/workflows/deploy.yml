@@ -34,8 +34,11 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Validate generated booth proximity data
-        run: python tools/generate_booth_proximity.py --check
+      - name: Validate bundled map snapshot
+        run: python tools/fetch_map_data.py --check
+
+      - name: Test bundled map download
+        run: python -m unittest discover -s tools -p '*_test.py'
 
       - name: Validate bundled analytics archive
         run: node tools/archive_bundled_catalog.mjs --check

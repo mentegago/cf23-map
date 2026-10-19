@@ -32,6 +32,7 @@ flutter:
   
   assets:
     - data/map.json
+    - data/map-version.json
     - data/booth-proximity.json
     - data/catalog-initial.json
     - data/fandoms-initial.json

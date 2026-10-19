@@ -12,7 +12,18 @@ class CatalogSnapshotCache {
   static const prefsVersionKey = 'catalog_snapshot_version_v3';
   static const _dbName = 'cf23-map';
   static const _storeName = 'catalog';
-  static const _recordKey = 'snapshot_v3';
+  final String _recordKey;
+  final String _prefsSnapshotKey;
+  final String _prefsVersionKey;
+
+  CatalogSnapshotCache({String namespace = 'catalog'})
+      : _recordKey = namespace == 'catalog' ? 'snapshot_v3' : '${namespace}_v1',
+        _prefsSnapshotKey = namespace == 'catalog'
+            ? prefsSnapshotKey
+            : '${namespace}_snapshot_v1',
+        _prefsVersionKey = namespace == 'catalog'
+            ? prefsVersionKey
+            : '${namespace}_snapshot_version_v1';
 
   Database? _db;
 
@@ -106,7 +117,7 @@ class CatalogSnapshotCache {
   Future<String?> _readPrefs() async {
     try {
       final preferences = await SharedPreferences.getInstance();
-      return preferences.getString(prefsSnapshotKey);
+      return preferences.getString(_prefsSnapshotKey);
     } catch (error) {
       if (kDebugMode) print('Could not read catalog preferences cache: $error');
       return null;
@@ -116,7 +127,7 @@ class CatalogSnapshotCache {
   Future<void> _writePrefs(String raw) async {
     try {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(prefsSnapshotKey, raw);
+      await preferences.setString(_prefsSnapshotKey, raw);
     } catch (error) {
       if (kDebugMode) {
         print('Could not write catalog preferences cache: $error');
@@ -127,8 +138,8 @@ class CatalogSnapshotCache {
   Future<void> _clearPrefs() async {
     try {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.remove(prefsSnapshotKey);
-      await preferences.remove(prefsVersionKey);
+      await preferences.remove(_prefsSnapshotKey);
+      await preferences.remove(_prefsVersionKey);
     } catch (error) {
       if (kDebugMode) {
         print('Could not clear catalog preferences cache: $error');
