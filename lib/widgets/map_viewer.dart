@@ -50,6 +50,8 @@ class _MapViewerState extends State<MapViewer>
       if (!mounted) return;
       context.read<CreatorDataProvider>().addListener(_onProviderChanged);
       _fitMap();
+      // URL selection can happen before the map mounts and starts listening.
+      _onProviderChanged();
     });
   }
 

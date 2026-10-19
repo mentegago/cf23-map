@@ -39,6 +39,7 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
   @override
   void initState() {
     super.initState();
+    _showSearchList = widget.selectedCreator == null;
 
     _searchFocusNode.addListener(() {
       if (mounted && _searchFocusNode.hasFocus) {

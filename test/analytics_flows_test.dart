@@ -11,6 +11,7 @@ import 'package:cf_map_flutter/services/recommendation_service.dart';
 import 'package:cf_map_flutter/services/search_tracking_controller.dart';
 import 'package:cf_map_flutter/services/deep_link_handler.dart';
 import 'package:cf_map_flutter/widgets/desktop/desktop_sidebar.dart';
+import 'package:cf_map_flutter/widgets/creator_detail_content.dart';
 import 'package:cf_map_flutter/widgets/mobile/expandable_search.dart';
 import 'analytics_test.dart' show RecordingAnalyticsSink;
 import 'search_tracking_test.dart' show TestCatalog;
@@ -114,6 +115,64 @@ void main() {
       favorites.dispose();
       recommendations.dispose();
       catalog.dispose();
+    });
+  }
+  for (final initiallySelected in [true, false]) {
+    testWidgets(
+        'desktop shows details for a creator selected ${initiallySelected ? 'before' : 'after'} mounting',
+        (tester) async {
+      tester.view.physicalSize = const Size(1100, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({});
+      final analytics = AnalyticsService(enabled: false);
+      final catalog = TestCatalog();
+      final tracking = SearchTrackingController(analytics, catalog);
+      final favorites = FavoritesService(catalog, analytics: analytics);
+      await favorites.initialize();
+      final recommendations = RecommendationService(disabled: true);
+      await recommendations.initialize();
+      addTearDown(analytics.dispose);
+      addTearDown(catalog.dispose);
+      addTearDown(tracking.dispose);
+      addTearDown(favorites.dispose);
+      addTearDown(recommendations.dispose);
+      void selectCreator() => applyDeepLink(
+          'https://cf23.nnt.gg/?creator_id=10',
+          catalog,
+          analytics,
+          (creator) => catalog.setSelectedCreator(creator),
+          initial: true);
+      if (initiallySelected) selectCreator();
+      await tester.pumpWidget(MultiProvider(
+        providers: [
+          Provider.value(value: analytics),
+          Provider.value(value: tracking),
+          ChangeNotifierProvider<CreatorDataProvider>.value(value: catalog),
+          ChangeNotifierProvider.value(value: favorites),
+          ChangeNotifierProvider.value(value: recommendations),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Consumer<CreatorDataProvider>(
+              builder: (context, provider, _) => DesktopSidebar(
+                creators: catalog.allCreators,
+                selectedCreator: provider.selectedCreator,
+                onCreatorSelected: (_, {required source, searchQuery = ''}) {},
+              ),
+            ),
+          ),
+        ),
+      ));
+      if (!initiallySelected) selectCreator();
+      await tester.pumpAndSettle();
+      expect(find.byType(CreatorDetailContent), findsOneWidget);
+      // Opening search should still return to the directory.
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+      expect(find.byType(CreatorDetailContent), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
     });
   }
   test(
