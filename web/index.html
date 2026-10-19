@@ -19,14 +19,18 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="color-scheme" content="light dark">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="Interactive booth map viewer for Comifuro 23 (CF23) event. Search for creators and navigate their booth locations.">
   <meta name="theme-color" content="#fffdf8" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#21192a" media="(prefers-color-scheme: dark)">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- Keep the standalone viewport below the status bar. Translucent mode can
+       offset WebKit's painted content from Flutter's pointer coordinates.
+       Match Flutter's generated viewport above; do not opt into full bleed. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CF23 Map">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -38,8 +42,11 @@
 
   <style>
     html, body {
-      overscroll-behavior-x: none;
-      touch-action: pan-y;
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
       background-color: #fffdf8;
     }
 
@@ -64,6 +71,6 @@
       }
     });
   </script>
-  <script src="flutter_bootstrap.js?v=17" async></script>
+  <script src="flutter_bootstrap.js?v=18" async></script>
 </body>
 </html>
