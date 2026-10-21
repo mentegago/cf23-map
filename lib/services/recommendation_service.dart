@@ -17,7 +17,7 @@ class RecommendationService extends ChangeNotifier {
   static const String _storageKey = 'recommendation_profile_v2';
   static const String _resultStorageKey = 'recommendation_results_v5';
   static const String _seedStorageKey = 'recommendation_seed';
-  static const int _algorithmVersion = 5;
+  static const int _algorithmVersion = 6;
   static const Duration _saveDelay = Duration(milliseconds: 500);
   static Future<BoothProximityData>? _boothProximityLoad;
 

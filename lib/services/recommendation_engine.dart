@@ -250,7 +250,7 @@ class RecommendationEngine {
       final value = _decay(
         entry.value.strength,
         entry.value.lastUpdated,
-        const Duration(days: 60),
+        const Duration(days: 4),
         now,
       );
       if (value > 0.01) vector[entry.key] = value;
@@ -271,7 +271,7 @@ class RecommendationEngine {
       final decayedBehavior = _decay(
         min(behaviorStrength, 5).toDouble(),
         interaction.lastUpdated,
-        const Duration(days: 30),
+        const Duration(days: 2),
         now,
       );
       final totalStrength =

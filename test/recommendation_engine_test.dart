@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cf_map_flutter/models/booth_proximity.dart';
 import 'package:cf_map_flutter/models/creator.dart';
 import 'package:cf_map_flutter/models/fandom.dart';
@@ -30,6 +32,74 @@ Creator creator(int id, String booth, List<String> fandomNames) => Creator(
 
 void main() {
   final now = DateTime(2026, 8, 22);
+
+  for (final explicit in [false, true]) {
+    test(
+        '${explicit ? 'explicit fandom' : 'browsing'} interest fades gradually',
+        () {
+      const engine = RecommendationEngine();
+      final creators = [
+        creator(1, 'A-1', ['Blue Archive']),
+        creator(2, 'B-1', ['Hololive']),
+      ];
+      final halfLifeHours = explicit ? 96 : 48;
+      for (final elapsedHours in [
+        0,
+        halfLifeHours ~/ 2,
+        halfLifeHours,
+        halfLifeHours * 2
+      ]) {
+        final oldTime = now.subtract(Duration(hours: elapsedHours));
+        final profile = explicit
+            ? RecommendationProfile(explicitFandomSignals: {
+                1: FandomSignal(strength: 5, lastUpdated: oldTime),
+                2: FandomSignal(strength: 5, lastUpdated: now),
+              })
+            : RecommendationProfile(creatorInteractions: {
+                1: CreatorInteraction(openStrength: 5, lastUpdated: oldTime),
+                2: CreatorInteraction(openStrength: 5, lastUpdated: now),
+              });
+        final results = engine.recommend(
+          creators: creators,
+          profile: profile,
+          favoriteIds: {},
+          sessionExposureIds: {},
+          now: now,
+        );
+        final oldScore = results
+            .singleWhere((result) => result.creator.id == 1)
+            .fandomAffinity;
+        final freshScore = results
+            .singleWhere((result) => result.creator.id == 2)
+            .fandomAffinity;
+        expect(oldScore / freshScore,
+            closeTo(pow(0.5, elapsedHours / halfLifeHours), 0.000001));
+      }
+    });
+  }
+
+  test('favorites retain their interest weight after browsing fades', () {
+    const engine = RecommendationEngine();
+    final ranked = engine.rankedInterestedFandoms(
+      creators: [
+        creator(1, 'A-1', ['Blue Archive']),
+        creator(2, 'B-1', ['Hololive']),
+      ],
+      profile: RecommendationProfile(
+        creatorInteractions: {
+          1: CreatorInteraction(
+              openStrength: 5,
+              lastUpdated: now.subtract(const Duration(days: 20))),
+        },
+        explicitFandomSignals: {
+          2: FandomSignal(strength: 5, lastUpdated: now),
+        },
+      ),
+      favoriteIds: {1},
+      now: now,
+    );
+    expect(ranked.first, 'Blue Archive');
+  });
 
   test('no profile data produces no personalized recommendations', () {
     const engine = RecommendationEngine();
