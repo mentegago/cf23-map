@@ -14,7 +14,7 @@ void main() {
 
     await provider.initialize();
 
-    expect(provider.creators, hasLength(1962));
+    expect(provider.creators, hasLength(1964));
     expect(provider.getCreatorById(1000077)?.name, 'AMAPro.');
     expect(provider.fandomById, isNotEmpty);
     final cachedSnapshot = (await SharedPreferences.getInstance())
@@ -29,7 +29,7 @@ void main() {
 
     final cachedProvider = CreatorDataProvider(enableRemoteUpdates: false);
     await cachedProvider.initialize();
-    expect(cachedProvider.creators, hasLength(1962));
+    expect(cachedProvider.creators, hasLength(1964));
     expect(cachedProvider.fandomIdForName('Blue Archive'), isNotNull);
     cachedProvider.dispose();
   });

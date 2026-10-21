@@ -2,8 +2,8 @@
   "schemaVersion": "1.0.0",
   "source": {
     "url": "https://fandom.directory/api/fandoms.json",
-    "etag": "\"sha256-UAbSkHmE6pNCNuG551CroULzAHgkk6rFPlRtn1jMxDY\"",
-    "lastModified": "Mon, 19 Oct 2026 16:03:41 GMT",
+    "etag": "\"sha256-wnf38jOdQNQrvtRP910YZc6pVxBuCtrBUJHQxK88QD8\"",
+    "lastModified": "Tue, 20 Oct 2026 16:05:05 GMT",
     "schemaVersion": "5"
   },
   "fandoms": [
@@ -18,7 +18,6 @@
         "and Original Characters.",
         "And Original Ip",
         "And Original Works",
-        "Cosplay",
         "Dan Karya Original.",
         "IP Original",
         "male OCs",
@@ -857,6 +856,7 @@
       "parentId": null,
       "alternateNames": [
         "Goddess of Victory : NIKKE",
+        "Goddess of Victory Nikke",
         "NIKKE",
         "NIKKE: Goddess of Victory"
       ]
@@ -3609,19 +3609,27 @@
       "kind": "franchise",
       "parentId": null,
       "alternateNames": [
+        "(SCTIR) S-CLASS THAT I RAISED",
         "MSCH",
         "My S class hunter",
         "My S-class Hunter",
         "My S-Class Hunters (MSCH)",
         "My S-Class Hunters (S-Class)",
         "My S-Class Hunters (The S-Classes that I Raised)",
+        "My S-class That I Raised",
         "My sclass hunter",
+        "Naega Kiun S-geupdeul",
         "S class",
         "S Class that I Raised",
         "S-Class",
         "S-class Hunter",
         "S-Class Hunters",
-        "SClass"
+        "S-Class I Raised",
+        "SClass",
+        "The S Class",
+        "The S Classes That I Raised",
+        "The S-classes That I Raised",
+        "The S-Ranks That I Raised"
       ]
     },
     {
@@ -5676,6 +5684,7 @@
       "parentId": null,
       "alternateNames": [
         "Cats Meme",
+        "Meme Cat",
         "Meme Cats"
       ]
     },
@@ -11772,13 +11781,6 @@
       "alternateNames": []
     },
     {
-      "id": 1313,
-      "name": "MSCH",
-      "kind": "franchise",
-      "parentId": null,
-      "alternateNames": []
-    },
-    {
       "id": 1314,
       "name": "Married in Red",
       "kind": "franchise",
@@ -11986,7 +11988,8 @@
       "kind": "franchise",
       "parentId": null,
       "alternateNames": [
-        "cool doji"
+        "cool doji",
+        "Play It Cool Guys!"
       ]
     },
     {
@@ -13135,18 +13138,6 @@
       "kind": "franchise",
       "parentId": null,
       "alternateNames": []
-    },
-    {
-      "id": 1496,
-      "name": "My S-Class That I Raised",
-      "kind": "franchise",
-      "parentId": null,
-      "alternateNames": [
-        "(SCTIR) S-CLASS THAT I RAISED",
-        "S-Class I Raised",
-        "The S Classes That I Raised",
-        "The S-classes That I Raised"
-      ]
     },
     {
       "id": 1497,
@@ -21591,7 +21582,7 @@
       "id": 2662,
       "name": "YHYJ",
       "kind": "franchise",
-      "parentId": 1496,
+      "parentId": 316,
       "alternateNames": [
         "Han Yoohyun",
         "Han Yoojin"
@@ -21664,6 +21655,272 @@
       "name": "tapiocaalice",
       "kind": "individual",
       "parentId": 1470,
+      "alternateNames": []
+    },
+    {
+      "id": 2674,
+      "name": "Amélie",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": [
+        "Amelie"
+      ]
+    },
+    {
+      "id": 2675,
+      "name": "American McGee's Alice",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2676,
+      "name": "Blade Runner 2049",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2677,
+      "name": "DOOM",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2678,
+      "name": "Dragon Age II",
+      "kind": "franchise",
+      "parentId": 470,
+      "alternateNames": []
+    },
+    {
+      "id": 2679,
+      "name": "Dragon Age: Origins",
+      "kind": "franchise",
+      "parentId": 470,
+      "alternateNames": []
+    },
+    {
+      "id": 2680,
+      "name": "Ikka Dumb Rock",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2681,
+      "name": "Marty Supreme",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2682,
+      "name": "Millsage",
+      "kind": "franchise",
+      "parentId": 111,
+      "alternateNames": []
+    },
+    {
+      "id": 2683,
+      "name": "Portrait of a Lady on Fire",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2684,
+      "name": "Psychopomp",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2685,
+      "name": "Alice in Chains",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2686,
+      "name": "beabadoobee",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2687,
+      "name": "Captain America",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2688,
+      "name": "Clairo",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2689,
+      "name": "Creep",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2690,
+      "name": "Disability Pride",
+      "kind": "generic_tag",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2691,
+      "name": "Jet Set Radio",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2692,
+      "name": "Lizzy McAlpine",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2693,
+      "name": "Mega Man",
+      "kind": "franchise",
+      "parentId": 896,
+      "alternateNames": [
+        "Megaman",
+        "Rockman"
+      ]
+    },
+    {
+      "id": 2694,
+      "name": "MF Ghost",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2695,
+      "name": "Neuro-sama",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2696,
+      "name": "PAYDAY: The Heist",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2697,
+      "name": "Rotaeno",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2698,
+      "name": "The Legend of Heroes: Trails of Cold Steel",
+      "kind": "franchise",
+      "parentId": 2185,
+      "alternateNames": []
+    },
+    {
+      "id": 2700,
+      "name": "Chiamachiato",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2701,
+      "name": "CRIMSon",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2702,
+      "name": "Deltoriel",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2703,
+      "name": "Junji Ito Maniac: Japanese Tales of the Macabre",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": [
+        "Junji Ito Maniac"
+      ]
+    },
+    {
+      "id": 2704,
+      "name": "Kanata Reina",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2705,
+      "name": "Krow Thornes",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2706,
+      "name": "MagniV",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2707,
+      "name": "Oristarium",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2708,
+      "name": "Prism:NOVA",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2709,
+      "name": "Re:Memories",
+      "kind": "franchise",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2710,
+      "name": "Selena AmariS",
+      "kind": "individual",
+      "parentId": null,
+      "alternateNames": []
+    },
+    {
+      "id": 2711,
+      "name": "Solace Amerta",
+      "kind": "individual",
+      "parentId": null,
       "alternateNames": []
     }
   ]
