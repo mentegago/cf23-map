@@ -58,7 +58,7 @@ class RecommendationEngine {
     int userSeed = 0,
     Set<int> previousIds = const {},
     DateTime? now,
-    int limit = 10,
+    int limit = 20,
     bool Function()? isCancelled,
   }) async {
     if (creators.isEmpty || limit <= 0) return [];
@@ -152,7 +152,7 @@ class RecommendationEngine {
     int userSeed = 0,
     Set<int> previousIds = const {},
     DateTime? now,
-    int limit = 10,
+    int limit = 20,
   }) {
     if (creators.isEmpty || limit <= 0) return [];
 

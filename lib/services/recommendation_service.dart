@@ -109,7 +109,7 @@ class RecommendationService extends ChangeNotifier {
     required Set<int> favoriteIds,
     Map<int, Fandom> allFandoms = const {},
     int catalogVersion = 0,
-    int limit = 10,
+    int limit = 20,
   }) {
     if (disabled || !_initialized) {
       return const [];

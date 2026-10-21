@@ -230,6 +230,7 @@ void main() {
       sessionExposureIds: const {},
       userSeed: 42,
       now: now,
+      limit: 10,
     );
 
     expect(
