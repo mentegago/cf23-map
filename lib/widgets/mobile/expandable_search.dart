@@ -235,7 +235,6 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     setState(() {
       _searchController.clear();
     });
-    _collapse();
     widget.onClear?.call();
   }
 
