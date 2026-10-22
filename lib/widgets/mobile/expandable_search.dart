@@ -121,6 +121,7 @@ class ExpandableSearchState extends State<ExpandableSearch> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_syncSearchQuery);
 
     _sheetController.addListener(_handleExtentChanged);
     _focusNode.addListener(() {
@@ -198,6 +199,12 @@ class ExpandableSearchState extends State<ExpandableSearch> {
     if (_activeScrollController?.hasClients ?? false) {
       _activeScrollController!.jumpTo(0);
     }
+  }
+
+  void _syncSearchQuery() {
+    context
+        .read<CreatorDataProvider>()
+        .updateSearchQuery(_searchController.text);
   }
 
   void _reportDetent(MobileSearchSheetDetent detent, {required bool user}) {

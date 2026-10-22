@@ -36,7 +36,31 @@ class CreatorDataProvider extends ChangeNotifier {
   ListScope analyticsOriginScope = ListScope.fullCatalog;
   List<Creator> get allCreators => _allCreators ?? const [];
   List<Creator> searchAllCreators(String query) =>
-      _fullIndex?.search(query) ?? const [];
+      _fullIndex?.search(query, fandomId: selectedFandomIdForQuery(query)) ??
+      const [];
+
+  int? _searchFandomId;
+  String? _searchFandomText;
+
+  int? selectedFandomIdForQuery(String query) =>
+      query == _searchFandomText ? _searchFandomId : null;
+
+  void selectFandomSearch(int fandomId) {
+    final fandom = fandomById[fandomId];
+    if (fandom == null) return;
+    _searchFandomId = fandomId;
+    _searchFandomText = fandom.name;
+    notifyListeners();
+  }
+
+  /// Called on actual text changes, including programmatic changes. Cursor and
+  /// selection changes keep the ID, as does setting the chip's own text.
+  void updateSearchQuery(String query) {
+    if (_searchFandomId == null || query == _searchFandomText) return;
+    _searchFandomId = null;
+    _searchFandomText = null;
+    notifyListeners();
+  }
 
   List<Creator>? _allCreators;
   Map<int, Fandom> _fandomById = const {};
@@ -109,13 +133,19 @@ class CreatorDataProvider extends ChangeNotifier {
   int? fandomIdForName(String name) => _fullIndex?.fandomIdForName(name);
 
   List<Creator> searchCreators(String query) =>
-      _activeIndex?.search(query) ?? const [];
+      _activeIndex?.search(query, fandomId: selectedFandomIdForQuery(query)) ??
+      const [];
 
-  List<String> fandomSuggestions(String query, {int limit = 20}) =>
-      _activeIndex?.fandomSuggestions(query, limit: limit) ?? const [];
+  List<String> fandomSuggestions(String query, {int limit = 20}) {
+    final selectedId = selectedFandomIdForQuery(query);
+    if (selectedId != null) {
+      return _activeIndex?.fandomNamesForId(selectedId) ?? const [];
+    }
+    return _activeIndex?.fandomSuggestions(query, limit: limit) ?? const [];
+  }
 
   List<String> matchingFandomNames(String query, {int limit = 20}) =>
-      _activeIndex?.matchingFandomNames(query, limit: limit) ?? const [];
+      query.trim().isEmpty ? const [] : fandomSuggestions(query, limit: limit);
 
   void setCreatorCustomList(
     List<int> creatorIds, {

@@ -34,6 +34,11 @@ class SearchTrackingController {
   }
 
   void changed(String query) {
+    catalog.updateSearchQuery(query);
+    if (_explicit != null && query != _query) {
+      _explicit = null;
+      _key = null;
+    }
     analytics.searchOpened();
     analytics.activity();
     if (isLink(query)) {
@@ -82,6 +87,7 @@ class SearchTrackingController {
   void select(int fandomId, SearchSource source) {
     final fandom = catalog.fandomById[fandomId];
     if (fandom == null) return;
+    catalog.selectFandomSearch(fandomId);
     analytics.searchOpened();
     _set(fandom.name, source: source, fandomId: fandomId);
     // A selection confirms an ambiguous typed query, but never double-counts

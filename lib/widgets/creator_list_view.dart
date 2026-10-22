@@ -51,20 +51,24 @@ class CreatorListView extends StatefulWidget {
 class _CreatorListViewState extends State<CreatorListView> {
   List<Creator>? _cachedFilteredCreators;
   String? _lastSearchQuery;
-  String? _lastSelectedFandom;
+  int? _lastSearchFandomId;
 
   List<String> get _fandomSuggestions =>
       context.read<CreatorDataProvider>().fandomSuggestions(widget.searchQuery);
 
   List<Creator> get _filteredCreators {
+    final data = context.read<CreatorDataProvider>();
+    final fandomId = data.selectedFandomIdForQuery(widget.searchQuery);
     // Return cached results if search query hasn't changed
     if (_lastSearchQuery == widget.searchQuery &&
+        _lastSearchFandomId == fandomId &&
         _cachedFilteredCreators != null) {
       return _cachedFilteredCreators!;
     }
 
     // Update cache
     _lastSearchQuery = widget.searchQuery;
+    _lastSearchFandomId = fandomId;
 
     if (widget.searchQuery.isEmpty) {
       _cachedFilteredCreators = widget.creators;
@@ -81,8 +85,6 @@ class _CreatorListViewState extends State<CreatorListView> {
   void didUpdateWidget(CreatorListView oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Clear selected fandom when search query changes (meaning user manually typed)
-    // Only clear if the new query doesn't match the last selected fandom
     if (oldWidget.searchQuery != widget.searchQuery) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final controller = widget.scrollController;
@@ -90,9 +92,6 @@ class _CreatorListViewState extends State<CreatorListView> {
           controller.jumpTo(0);
         }
       });
-      if (widget.searchQuery != _lastSelectedFandom) {
-        _lastSelectedFandom = null;
-      }
     }
 
     // If creators list has changed, recompute fandom counts and clear cache
@@ -105,6 +104,7 @@ class _CreatorListViewState extends State<CreatorListView> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CreatorDataProvider>();
     context.read<RecommendationService>().setHomeVisible(
           widget.homeVisible &&
               widget.searchQuery.isEmpty &&
@@ -131,9 +131,8 @@ class _CreatorListViewState extends State<CreatorListView> {
         .read<CreatorDataProvider>()
         .matchingFandomNames(widget.searchQuery);
     final xList = _homeFandomSuggestions(favoriteIds);
-    final hasFandomSuggestions = widget.showFandomSuggestions &&
-        fandomSuggestions.isNotEmpty &&
-        _lastSelectedFandom == null;
+    final hasFandomSuggestions =
+        widget.showFandomSuggestions && fandomSuggestions.isNotEmpty;
 
     // Calculate item count
     int itemCount = 0;
@@ -165,9 +164,6 @@ class _CreatorListViewState extends State<CreatorListView> {
                     .read<RecommendationService>()
                     .recordFandomInterest(fandomId);
               }
-              setState(() {
-                _lastSelectedFandom = fandom;
-              });
               widget.onSearchQueryChanged?.call(fandom);
             },
           );
@@ -264,9 +260,8 @@ class _CreatorListViewState extends State<CreatorListView> {
             popularFandoms: popularFandomSuggestions,
             allFandoms: context.read<CreatorDataProvider>().fandomById,
           );
-    final hasFandomSuggestions = widget.showFandomSuggestions &&
-        fandomSuggestions.isNotEmpty &&
-        _lastSelectedFandom == null;
+    final hasFandomSuggestions =
+        widget.showFandomSuggestions && fandomSuggestions.isNotEmpty;
 
     // Calculate total item count for ListView.builder
     int itemCount = 0;
@@ -329,9 +324,8 @@ class _CreatorListViewState extends State<CreatorListView> {
     bool shouldRefreshOnReturn,
     VoidCallback onShouldHideListScreen,
   ) {
-    final hasFandomSuggestions = widget.showFandomSuggestions &&
-        fandomSuggestions.isNotEmpty &&
-        _lastSelectedFandom == null;
+    final hasFandomSuggestions =
+        widget.showFandomSuggestions && fandomSuggestions.isNotEmpty;
     int currentIndex = 0;
 
     // Fandom suggestions sit directly below the search controls.
@@ -347,9 +341,6 @@ class _CreatorListViewState extends State<CreatorListView> {
                   .read<RecommendationService>()
                   .recordFandomInterest(fandomId);
             }
-            setState(() {
-              _lastSelectedFandom = fandom;
-            });
             widget.onSearchQueryChanged?.call(fandom);
           },
         );

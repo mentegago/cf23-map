@@ -39,6 +39,7 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_syncSearchQuery);
     _showSearchList = widget.selectedCreator == null;
 
     _searchFocusNode.addListener(() {
@@ -75,6 +76,12 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
 
   void _performSearch(String query) {
     if (_searchScrollController.hasClients) _searchScrollController.jumpTo(0);
+  }
+
+  void _syncSearchQuery() {
+    context
+        .read<CreatorDataProvider>()
+        .updateSearchQuery(_searchController.text);
   }
 
   void _handleCreatorSelected(Creator creator) {

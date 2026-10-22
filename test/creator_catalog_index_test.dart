@@ -221,8 +221,9 @@ void main() {
     expect(index.matchingFandomNames('shingeki').first, 'Attack on Titan');
     expect(index.matchingFandomNames('AOT').first, 'Attack on Titan');
     expect(index.fandomSuggestions('ojama').first, 'Magical DoReMi');
-    expect(index.fandomSuggestions('Dan').first, 'Dandadan');
-    expect(index.search('Dan').first.id, 8);
+    // Exact aliases now outrank partial canonical names.
+    expect(index.fandomSuggestions('Dan').first, 'Original');
+    expect(index.search('Dan').first.id, 1);
     expect(index.fandomSuggestions('BA').first, 'Blue Archive');
     expect(
       index.search('Oc charater').map((creator) => creator.id),

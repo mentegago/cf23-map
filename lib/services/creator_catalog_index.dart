@@ -113,14 +113,16 @@ class CreatorCatalogIndex {
 
   List<String> matchingFandomNames(String query, {int limit = 20}) {
     if (query.trim().isEmpty) return const [];
-    final matched = fandomSuggestions(query, limit: limit);
-    if (matched.isEmpty) return const [];
+    return fandomSuggestions(query, limit: limit);
+  }
 
+  /// Includes only catalog-represented fandoms, parent first, then by depth.
+  List<String> fandomNamesForId(int rootId) => _expandFandoms([rootId]);
+
+  List<String> _expandFandoms(Iterable<int> rootIds) {
     final expanded = <String>[];
-    final seen = <String>{};
-    for (final name in matched) {
-      final rootId = fandomIdForName(name);
-      if (rootId == null) continue;
+    final seen = <int>{};
+    for (final rootId in rootIds) {
       final descendants = fandoms
           .where((fandom) => _isDescendantOf(fandom.id, rootId))
           .toList()
@@ -131,7 +133,7 @@ class CreatorCatalogIndex {
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
         });
       for (final fandom in descendants) {
-        if (seen.add(fandom.searchName)) expanded.add(fandom.name);
+        if (seen.add(fandom.id)) expanded.add(fandom.name);
       }
     }
     return expanded;
@@ -177,16 +179,20 @@ class CreatorCatalogIndex {
       matches.add(match);
     }
     matches.sort(_compareFandomMatches);
-    return matches
-        .take(limit)
-        .map((match) => match.fandom.name)
-        .toList(growable: false);
+    // Limit direct matches, but retain their descendants so every included
+    // branch can be selected from the chip list.
+    return _expandFandoms(matches.take(limit).map((match) => match.fandom.id));
   }
 
   /// Scores each fandom once, then fans that score out through the inverted
   /// fandom-ID index. This avoids repeating the same fuzzy comparison for
   /// every creator that references a popular fandom.
-  List<Creator> search(String query) {
+  List<Creator> search(String query, {int? fandomId}) {
+    if (fandomId != null) {
+      final matches = [...?creatorsByFandomId[fandomId]]
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return matches;
+    }
     final cacheKey = query.trim().toLowerCase();
     return _searchCache.putIfAbsent(cacheKey, () => _searchUncached(query));
   }
@@ -223,6 +229,9 @@ class CreatorCatalogIndex {
           score,
           stringScore,
           fromCanonical: true,
+          tier: optimizedBoothQuery.isNotEmpty && score == 2
+              ? -1
+              : _textMatchTier(optimizedQuery, creator.name.toLowerCase()),
         );
       }
     }
@@ -239,9 +248,10 @@ class CreatorCatalogIndex {
         if (current == null || _fandomBeatsCurrent(current, fandomMatch)) {
           scores[creator.id] = _CreatorMatch(
             creator,
-            max(current?.score ?? -1, fandomMatch.score),
+            fandomMatch.score,
             fandomMatch.stringScore,
             fromCanonical: fandomMatch.fromCanonical,
+            tier: fandomMatch.tier,
           );
         }
       }
@@ -249,9 +259,9 @@ class CreatorCatalogIndex {
 
     final matches = scores.values.toList()
       ..sort((a, b) {
-        if (a.fromCanonical != b.fromCanonical) {
-          return a.fromCanonical ? -1 : 1;
-        }
+        final quality =
+            _compareQuality(a.tier, a.fromCanonical, b.tier, b.fromCanonical);
+        if (quality != 0) return quality;
         final score = b.score.compareTo(a.score);
         if (score != 0) return score;
         final stringScore = b.stringScore.compareTo(a.stringScore);
@@ -268,65 +278,87 @@ class CreatorCatalogIndex {
     required String trimmedQuery,
     required String optimizedQuery,
   }) {
-    var score = -1.0;
-    var stringScore = -1.0;
-    var fromCanonical = false;
+    _FandomMatch? best;
     for (var i = 0; i < fandom.searchLabels.length; i++) {
       final match = _scoreSearchLabel(
         fandom.searchLabels[i],
         trimmedQuery: trimmedQuery,
         optimizedQuery: optimizedQuery,
       );
-      if (match == null) continue;
-      if (i == 0) fromCanonical = true;
-      if (match.stringScore > stringScore ||
-          (match.stringScore == stringScore && match.score > score)) {
-        score = match.score;
-        stringScore = match.stringScore;
+      if (match == null || match.score < 0.7) continue;
+      final candidate = _FandomMatch(fandom, match.score, match.stringScore,
+          fromCanonical: i == 0, tier: match.tier);
+      if (best == null || _compareFandomMatches(candidate, best) < 0) {
+        best = candidate;
       }
     }
-    return score < 0
-        ? null
-        : _FandomMatch(
-            fandom,
-            score,
-            stringScore,
-            fromCanonical: fromCanonical,
-          );
+    return best;
   }
 }
 
 bool _fandomBeatsCurrent(_CreatorMatch current, _FandomMatch fandom) {
-  if (fandom.fromCanonical != current.fromCanonical) {
-    return fandom.fromCanonical;
-  }
+  final quality = _compareQuality(
+      fandom.tier, fandom.fromCanonical, current.tier, current.fromCanonical);
+  if (quality != 0) return quality < 0;
+  if (fandom.score != current.score) return fandom.score > current.score;
   return fandom.stringScore > current.stringScore;
 }
 
-({double score, double stringScore})? _scoreSearchLabel(
+// Exact, word prefix, acronym, then general subsequence. Canonical spelling
+// only breaks ties within a match tier; an exact alias beats a loose name.
+int _compareQuality(int aTier, bool aCanonical, int bTier, bool bCanonical) {
+  final tier = aTier.compareTo(bTier);
+  if (tier != 0) return tier;
+  return aCanonical == bCanonical ? 0 : (aCanonical ? -1 : 1);
+}
+
+List<String> _words(String value) =>
+    RegExp(r'[a-z0-9]+').allMatches(value).map((m) => m.group(0)!).toList();
+
+int _textMatchTier(String query, String target) {
+  if (query == optimizeStringFormat(target)) return 0;
+  final words = _words(target);
+  if (query.isNotEmpty && words.any((word) => word.startsWith(query))) return 1;
+  return 3;
+}
+
+({double score, double stringScore, int tier})? _scoreSearchLabel(
   FandomSearchLabel label, {
   required String trimmedQuery,
   required String optimizedQuery,
 }) {
-  var score = -1.0;
-  var stringScore = -1.0;
-  final forward = fuzzyScore(optimizedQuery, label.target);
-  final forwardStringScore =
-      label.target.isEmpty ? 0.0 : optimizedQuery.length / label.target.length;
-  if (forward.matched) {
-    score = forward.score;
-    stringScore = forwardStringScore;
+  if (optimizedQuery.isEmpty) return null;
+  final coverage = optimizedQuery.length / label.optimized.length;
+  if (optimizedQuery == label.optimized) {
+    return (score: 1.0, stringScore: coverage, tier: 0);
   }
 
-  if (label.optimized.isNotEmpty && trimmedQuery.isNotEmpty) {
-    final reverse = fuzzyScore(label.optimized, trimmedQuery);
-    final reverseStringScore = label.optimized.length / trimmedQuery.length;
-    if (reverse.matched && reverseStringScore > stringScore) {
-      score = max(score, reverse.score);
-      stringScore = reverseStringScore;
+  final queryWords = _words(trimmedQuery);
+  final targetWords = _words(label.target);
+  var prefix = label.optimized.startsWith(optimizedQuery);
+  for (var start = 0;
+      start + queryWords.length <= targetWords.length;
+      start++) {
+    if (queryWords.isNotEmpty &&
+        List.generate(queryWords.length,
+                (i) => targetWords[start + i].startsWith(queryWords[i]))
+            .every((matches) => matches)) {
+      prefix = true;
+      break;
     }
   }
-  return score < 0 ? null : (score: score, stringScore: stringScore);
+  if (prefix) return (score: 1.0, stringScore: coverage, tier: 1);
+
+  final initials = targetWords.map((word) => word[0]).join();
+  if (optimizedQuery.length >= 2 && initials.startsWith(optimizedQuery)) {
+    return (score: 0.85, stringScore: coverage, tier: 2);
+  }
+  // Very short strings must have a meaningful boundary/alias match.
+  if (optimizedQuery.length <= 3) return null;
+  final forward = fuzzyScore(optimizedQuery, label.target);
+  return forward.matched
+      ? (score: forward.score, stringScore: coverage, tier: 3)
+      : null;
 }
 
 class _CreatorMatch {
@@ -334,12 +366,14 @@ class _CreatorMatch {
   final double score;
   final double stringScore;
   final bool fromCanonical;
+  final int tier;
 
   const _CreatorMatch(
     this.creator,
     this.score,
     this.stringScore, {
     this.fromCanonical = true,
+    this.tier = 3,
   });
 }
 
@@ -348,19 +382,21 @@ class _FandomMatch {
   final double score;
   final double stringScore;
   final bool fromCanonical;
+  final int tier;
 
   const _FandomMatch(
     this.fandom,
     this.score,
     this.stringScore, {
     this.fromCanonical = false,
+    this.tier = 3,
   });
 }
 
 int _compareFandomMatches(_FandomMatch a, _FandomMatch b) {
-  if (a.fromCanonical != b.fromCanonical) {
-    return a.fromCanonical ? -1 : 1;
-  }
+  final quality =
+      _compareQuality(a.tier, a.fromCanonical, b.tier, b.fromCanonical);
+  if (quality != 0) return quality;
   final score = b.score.compareTo(a.score);
   if (score != 0) return score;
   final stringScore = b.stringScore.compareTo(a.stringScore);
